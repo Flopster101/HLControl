@@ -1,5 +1,5 @@
 name: hlcontrol
-description: "A new Flutter project."
+description: "An open-source custom controller app for Haylou headphones, serving as a lightweight replacement for Haylou Sound."
 publish_to: 'none'
 version: 0.1.0+1
 
