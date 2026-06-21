@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'src/core/controllers/headphone_controller.dart';
 import 'src/ui/screens/home_screen.dart';
 import 'src/ui/theme/app_theme.dart';
 import 'src/ui/theme/theme_controller.dart';
@@ -12,13 +13,24 @@ void main() async {
   final themeController = ThemeController();
   await themeController.loadSettings();
 
-  runApp(HlControlApp(themeController: themeController));
+  // Initialize HeadphoneController (coordinates real Bluetooth & simulated states)
+  final headphoneController = HeadphoneController(themeController);
+
+  runApp(HlControlApp(
+    themeController: themeController,
+    headphoneController: headphoneController,
+  ));
 }
 
 class HlControlApp extends StatelessWidget {
-  const HlControlApp({super.key, required this.themeController});
+  const HlControlApp({
+    super.key,
+    required this.themeController,
+    required this.headphoneController,
+  });
 
   final ThemeController themeController;
+  final HeadphoneController headphoneController;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +54,10 @@ class HlControlApp extends StatelessWidget {
                 useDynamic ? darkDynamic : null,
               ),
               themeMode: themeController.themeMode,
-              home: HomeScreen(themeController: themeController),
+              home: HomeScreen(
+                themeController: themeController,
+                headphoneController: headphoneController,
+              ),
             );
           },
         );

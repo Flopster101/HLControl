@@ -1,13 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../core/controllers/headphone_controller.dart';
+import '../../core/models/bluetooth_device.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/anc_selector.dart';
 import '../widgets/eq_selector.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.themeController});
+  const HomeScreen({
+    super.key,
+    required this.themeController,
+    required this.headphoneController,
+  });
 
   final ThemeController themeController;
+  final HeadphoneController headphoneController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,27 +24,35 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
   int _versionTapCount = 0;
 
-  // Simulated headphone states
-  bool get _isConnected => widget.themeController.isMockConnected;
-  String _deviceName = 'HAYLOU S40';
-  int get _batteryPercent => widget.themeController.mockBatteryPercent;
+  // Getters from HeadphoneController
+  bool get _isConnected => widget.headphoneController.isConnected;
+  bool get _isConnecting => widget.headphoneController.isConnecting;
+  String get _deviceName => widget.headphoneController.deviceName;
+  int get _batteryPercent => widget.headphoneController.batteryPercent;
 
-  String _selectedAncMode = 'ANC On';
-  int _selectedAncIntensity = 0; // 0 = High, 1 = Medium, 2 = Low (firmware codes)
+  String get _selectedAncMode {
+    final mode = widget.headphoneController.status.ancMode;
+    if (mode.contains('Normal') || mode.contains('Off')) return 'Normal';
+    if (mode.contains('ANC')) return 'ANC On';
+    if (mode.contains('Transparency') || mode.contains('Aware')) return 'Transparency';
+    if (mode.contains('Adaptive')) return 'Adaptive';
+    return 'Normal';
+  }
 
-  String _selectedEqPreset = 'Default';
+  int _selectedAncIntensity = 0; // preserved locally for UI purposes
 
-  bool _gameMode = false;
-  bool _windNoiseReduction = false;
-  bool _multipoint = false;
+  String get _selectedEqPreset => widget.headphoneController.status.eqPreset;
 
-  String _spatialAudioMode = 'Off'; // Off, Static, Dynamic
-  String _spatialScene = 'Music'; // Music, Sport, Movie
+  bool get _gameMode => widget.headphoneController.status.gameMode;
+  bool get _windNoiseReduction => widget.headphoneController.status.windNoise;
+  bool get _multipoint => widget.headphoneController.status.multipoint;
 
-  bool _wearDetection = true;
+  String get _spatialAudioMode => widget.headphoneController.status.spatialAudioMode;
+  String get _spatialScene => widget.headphoneController.status.spatialScene;
 
-  // 0 = 30m, 1 = 1h, 2 = 3h, 3 = 5h, 4 = Never
-  int _autoShutdownIndex = 4;
+  bool get _wearDetection => widget.headphoneController.status.wearDetection;
+
+  int get _autoShutdownIndex => widget.headphoneController.status.autoShutdownIndex;
   final List<String> _shutdownOptions = ['30 Min', '1 Hour', '3 Hours', '5 Hours', 'Never'];
 
   // Custom EQ states (10-band slider values from -10 to +10 dB)
@@ -131,9 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
           FilledButton(
             onPressed: () {
               if (textController.text.trim().isNotEmpty) {
-                setState(() {
-                  _deviceName = textController.text.trim();
-                });
+                widget.headphoneController.renameDevice(textController.text.trim());
               }
               Navigator.pop(context);
             },
@@ -148,73 +161,160 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 650;
+    return ListenableBuilder(
+      listenable: widget.headphoneController,
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 650;
 
-        return Scaffold(
-          appBar: isWide
-              ? null // Hide appBar on desktop because Sidebar has the title header
-              : AppBar(
-                  title: const Text('HL Control'),
-                  elevation: 0,
-                ),
-          body: isWide
-              ? Row(
-                  children: [
-                    _buildSidebar(theme),
-                    const VerticalDivider(thickness: 1, width: 1),
-                    Expanded(
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 600),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: _buildCurrentTabContent(theme),
+            return Scaffold(
+              appBar: isWide
+                  ? null // Hide appBar on desktop because Sidebar has the title header
+                  : AppBar(
+                      title: const Text('HL Control'),
+                      elevation: 0,
+                    ),
+              body: isWide
+                  ? Row(
+                      children: [
+                        _buildSidebar(theme),
+                        const VerticalDivider(thickness: 1, width: 1),
+                        Expanded(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 600),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: _buildCurrentTabContent(theme),
+                              ),
+                            ),
                           ),
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _buildCurrentTabContent(theme),
                         ),
                       ),
                     ),
-                  ],
-                )
-              : Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _buildCurrentTabContent(theme),
+              bottomNavigationBar: isWide
+                  ? null
+                  : SafeArea(
+                      child: NavigationBar(
+                        selectedIndex: _currentTab,
+                        onDestinationSelected: (index) {
+                          setState(() {
+                            _currentTab = index;
+                          });
+                        },
+                        destinations: const [
+                          NavigationDestination(
+                            icon: Icon(Icons.tune),
+                            label: 'Control',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.equalizer),
+                            label: 'Equalizer',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.settings),
+                            label: 'Settings',
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ),
-          bottomNavigationBar: isWide
-              ? null
-              : SafeArea(
-                  child: NavigationBar(
-                    selectedIndex: _currentTab,
-                    onDestinationSelected: (index) {
-                      setState(() {
-                        _currentTab = index;
-                      });
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.tune),
-                        label: 'Control',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.equalizer),
-                        label: 'Equalizer',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.settings),
-                        label: 'Settings',
-                      ),
-                    ],
-                  ),
-                ),
+            );
+          },
         );
       },
     );
+  }
+
+  void _connectDevice() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Scanning paired devices...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final List<BluetoothDevice> devices = await widget.headphoneController.getPairedDevices();
+      if (!mounted) return;
+      Navigator.pop(context); // close scanning dialog
+
+      if (devices.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('No Headphones Found'),
+            content: const Text(
+              'No paired Haylou headphones were found on your system. '
+              'Please pair your headphones in your OS Bluetooth settings first.'
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else if (devices.length == 1) {
+        widget.headphoneController.connect(devices[0].macAddress);
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Select Device'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: devices.length,
+                itemBuilder: (context, index) {
+                  final dev = devices[index];
+                  return ListTile(
+                    leading: const Icon(Icons.bluetooth),
+                    title: Text(dev.name),
+                    subtitle: Text(dev.macAddress),
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.headphoneController.connect(dev.macAddress);
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildSidebar(ThemeData theme) {
@@ -343,9 +443,15 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedMode: _selectedAncMode,
           enabled: _isConnected,
           onChanged: (mode) {
-            setState(() {
-              _selectedAncMode = mode;
-            });
+            int modeVal = 0;
+            if (mode == 'ANC On') {
+              modeVal = 1;
+            } else if (mode == 'Transparency') {
+              modeVal = 2;
+            } else if (mode == 'Adaptive') {
+              modeVal = 4;
+            }
+            widget.headphoneController.setAncMode(modeVal);
           },
         ),
 
@@ -515,15 +621,19 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedPreset: _selectedEqPreset,
             enabled: _isConnected,
             onChanged: (preset) {
-              setState(() {
-                _selectedEqPreset = preset;
+              final presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
+              final idx = presets.indexOf(preset);
+              if (idx != -1) {
+                widget.headphoneController.setEqPreset(idx);
                 final vals = _presetValues[preset];
                 if (vals != null) {
-                  for (int i = 0; i < 10; i++) {
-                    _eqValues[i] = vals[i];
-                  }
+                  setState(() {
+                    for (int i = 0; i < 10; i++) {
+                      _eqValues[i] = vals[i];
+                    }
+                  });
                 }
-              });
+              }
             },
           ),
         ),
@@ -568,8 +678,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 for (int i = 0; i < 10; i++) {
                                   _eqValues[i] = values[i];
                                 }
-                                _selectedEqPreset = 'Custom';
                               });
+                              widget.headphoneController.setEqPreset(15);
                             }
                           : null,
                       onDeleted: _isConnected
@@ -624,8 +734,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? () {
                               setState(() {
                                 _eqValues.fillRange(0, _eqValues.length, 0.0);
-                                _selectedEqPreset = 'Default';
                               });
+                              widget.headphoneController.setEqPreset(0);
                             }
                           : null,
                       icon: const Icon(Icons.refresh),
@@ -684,8 +794,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ? (val) {
                                           setState(() {
                                             _eqValues[index] = val;
-                                            _selectedEqPreset = 'Custom';
                                           });
+                                          widget.headphoneController.setEqPreset(15);
                                         }
                                       : null,
                                 ),
@@ -937,6 +1047,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildConnectionBanner(ThemeData theme) {
+    Color statusColor = Colors.red;
+    if (_isConnected) {
+      statusColor = Colors.green;
+    } else if (_isConnecting) {
+      statusColor = Colors.amber;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -948,30 +1065,60 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _isConnected ? Colors.green : Colors.red,
+          if (_isConnecting)
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusColor,
+              ),
             ),
-          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _isConnected ? 'Connected via RFCOMM' : 'Disconnected',
+                  _isConnected
+                      ? 'Connected via RFCOMM'
+                      : (_isConnecting ? 'Connecting...' : 'Disconnected'),
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  _isConnected ? 'MAC: 00:1A:7D:DA:71:11 (Port 10)' : 'No device connected',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  _isConnected
+                      ? 'Device: $_deviceName'
+                      : (widget.headphoneController.status.error != null
+                          ? 'Error: ${widget.headphoneController.status.error}'
+                          : 'No device connected'),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: widget.headphoneController.status.error != null
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
+          if (!_isConnected && !_isConnecting)
+            TextButton.icon(
+              onPressed: _connectDevice,
+              icon: const Icon(Icons.bluetooth),
+              label: const Text('Connect'),
+            )
+          else if (_isConnected)
+            TextButton.icon(
+              onPressed: () => widget.headphoneController.disconnect(),
+              icon: const Icon(Icons.bluetooth_disabled),
+              label: const Text('Disconnect'),
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+            ),
         ],
       ),
     );
@@ -1008,9 +1155,7 @@ class _HomeScreenState extends State<HomeScreen> {
               divisions: 4,
               onChanged: _isConnected
                   ? (val) {
-                      setState(() {
-                        _autoShutdownIndex = val.toInt();
-                      });
+                      widget.headphoneController.setAutoShutdown(val.toInt());
                     }
                   : null,
             ),
@@ -1061,9 +1206,7 @@ class _HomeScreenState extends State<HomeScreen> {
             value: _gameMode,
             onChanged: _isConnected
                 ? (val) {
-                    setState(() {
-                      _gameMode = val;
-                    });
+                    widget.headphoneController.setGameMode(val);
                   }
                 : null,
           ),
@@ -1075,9 +1218,7 @@ class _HomeScreenState extends State<HomeScreen> {
             value: _windNoiseReduction,
             onChanged: _isConnected
                 ? (val) {
-                    setState(() {
-                      _windNoiseReduction = val;
-                    });
+                    widget.headphoneController.setWindNoise(val);
                   }
                 : null,
           ),
@@ -1089,9 +1230,7 @@ class _HomeScreenState extends State<HomeScreen> {
             value: _multipoint,
             onChanged: _isConnected
                 ? (val) {
-                    setState(() {
-                      _multipoint = val;
-                    });
+                    widget.headphoneController.setMultipoint(val);
                   }
                 : null,
           ),
@@ -1103,9 +1242,7 @@ class _HomeScreenState extends State<HomeScreen> {
             value: _wearDetection,
             onChanged: _isConnected
                 ? (val) {
-                    setState(() {
-                      _wearDetection = val;
-                    });
+                    widget.headphoneController.setWearDetection(val);
                   }
                 : null,
           ),
@@ -1167,9 +1304,8 @@ class _HomeScreenState extends State<HomeScreen> {
               selected: {_spatialAudioMode},
               onSelectionChanged: _isConnected
                   ? (newSelection) {
-                      setState(() {
-                        _spatialAudioMode = newSelection.first;
-                      });
+                      final mode = newSelection.first;
+                      widget.headphoneController.setSpatialAudio(mode != 'Off');
                     }
                   : null,
             ),
@@ -1201,9 +1337,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     }).toList(),
                     selected: {_spatialScene},
                     onSelectionChanged: (newSelection) {
-                      setState(() {
-                        _spatialScene = newSelection.first;
-                      });
+                      final scene = newSelection.first;
+                      final idx = ['Music', 'Sport', 'Movie'].indexOf(scene);
+                      if (idx != -1) {
+                        widget.headphoneController.setSpatialScene(idx);
+                      }
                     },
                   ),
                 ),
