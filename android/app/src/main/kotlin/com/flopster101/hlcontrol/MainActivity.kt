@@ -1,4 +1,4 @@
-package com.hlcontrol.hlcontrol
+package com.flopster101.hlcontrol
 
 import io.flutter.embedding.android.FlutterActivity
 
