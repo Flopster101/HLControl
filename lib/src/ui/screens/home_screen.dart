@@ -15,11 +15,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
+  int _versionTapCount = 0;
 
   // Simulated headphone states
-  bool _isConnected = true;
+  bool get _isConnected => widget.themeController.isMockConnected;
   String _deviceName = 'HAYLOU S40';
-  int _batteryPercent = 85;
+  int get _batteryPercent => widget.themeController.mockBatteryPercent;
 
   String _selectedAncMode = 'ANC On';
   int _selectedAncIntensity = 0; // 0 = High, 1 = Medium, 2 = Low (firmware codes)
@@ -794,29 +795,52 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'Developer Simulator'),
-        const SizedBox(height: 12),
-        _buildSimulatorCard(theme),
+        if (widget.themeController.isDeveloperMode) ...[
+          const SizedBox(height: 28),
+          _buildSectionHeader(theme, 'Developer Settings'),
+          const SizedBox(height: 12),
+          _buildSimulatorCard(theme),
+        ],
         const SizedBox(height: 28),
         _buildSectionHeader(theme, 'About App'),
         const SizedBox(height: 12),
         Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'HL Control v0.1.0',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'An open-source custom controller app for Haylou headphones, serving as a lightweight replacement for Haylou Sound.',
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                ),
-              ],
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () {
+              if (!widget.themeController.isDeveloperMode) {
+                setState(() {
+                  _versionTapCount++;
+                  if (_versionTapCount >= 5) {
+                    widget.themeController.setDeveloperMode(true);
+                    _versionTapCount = 0;
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Developer options enabled!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                });
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'HL Control v0.1.0',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'An open-source custom controller app for Haylou headphones, serving as a lightweight replacement for Haylou Sound.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -838,9 +862,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Switch(
                   value: _isConnected,
                   onChanged: (val) {
-                    setState(() {
-                      _isConnected = val;
-                    });
+                    widget.themeController.setMockConnected(val);
                   },
                 ),
               ],
@@ -855,11 +877,34 @@ class _HomeScreenState extends State<HomeScreen> {
               label: '$_batteryPercent%',
               onChanged: _isConnected
                   ? (val) {
-                      setState(() {
-                        _batteryPercent = val.toInt();
-                      });
+                      widget.themeController.setMockBatteryPercent(val.toInt());
                     }
                   : null,
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _versionTapCount = 0;
+                });
+                widget.themeController.setDeveloperMode(false);
+                widget.themeController.setMockConnected(false);
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Developer options disabled.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.developer_mode),
+              label: const Text('Disable Developer Mode'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+                side: BorderSide(color: theme.colorScheme.error.withOpacity(0.5)),
+              ),
             ),
           ],
         ),
