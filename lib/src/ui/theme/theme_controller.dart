@@ -25,6 +25,7 @@ class ThemeController extends ChangeNotifier {
   bool _autoConnectLastHeadphones = true; // Auto connect to last headphones (enabled by default)
   String _lastConnectedMac = '';
   String _lastConnectedName = '';
+  final Map<String, String> _deviceNames = {};
 
   ThemeMode get themeMode => _themeMode;
   bool get useDynamicColor => _useDynamicColor;
@@ -33,7 +34,42 @@ class ThemeController extends ChangeNotifier {
   int get mockBatteryPercent => _mockBatteryPercent;
   bool get autoConnectLastHeadphones => _autoConnectLastHeadphones;
   String get lastConnectedMac => _lastConnectedMac;
-  String get lastConnectedName => _lastConnectedName;
+  String get lastConnectedName {
+    if (_lastConnectedMac.isEmpty) return '';
+    final name = _deviceNames[_lastConnectedMac];
+    if (name != null && name.isNotEmpty && name.toLowerCase() != 'disconnected') {
+      return name;
+    }
+    if (_lastConnectedName.isNotEmpty && _lastConnectedName.toLowerCase() != 'disconnected') {
+      return _lastConnectedName;
+    }
+    return '';
+  }
+
+  Map<String, String> get deviceNames => _deviceNames;
+
+  String getDeviceName(String mac, String fallback) {
+    if (mac.isEmpty) return fallback;
+    final savedName = _deviceNames[mac];
+    if (savedName != null && savedName.isNotEmpty && savedName.toLowerCase() != 'disconnected') {
+      return savedName;
+    }
+    if (fallback.isNotEmpty && fallback.toLowerCase() != 'disconnected') {
+      return fallback;
+    }
+    return mac;
+  }
+
+  Future<void> saveDeviceName(String mac, String name) async {
+    if (mac.isEmpty || name.isEmpty || name.toLowerCase() == 'disconnected') return;
+    if (_deviceNames[mac] == name) return;
+    _deviceNames[mac] = name;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('device_name_$mac', name);
+    } catch (_) {}
+  }
 
   /// Loads persisted settings from local storage. Awaited in main before runApp.
   Future<void> loadSettings() async {
@@ -52,6 +88,26 @@ class ThemeController extends ChangeNotifier {
       _autoConnectLastHeadphones = prefs.getBool(_autoConnectLastHeadphonesKey) ?? true;
       _lastConnectedMac = prefs.getString(_lastConnectedMacKey) ?? '';
       _lastConnectedName = prefs.getString(_lastConnectedNameKey) ?? '';
+      if (_lastConnectedName.toLowerCase() == 'disconnected') {
+        _lastConnectedName = '';
+        prefs.remove(_lastConnectedNameKey);
+      }
+
+      // Load all keys that start with 'device_name_'
+      for (var key in prefs.getKeys()) {
+        if (key.startsWith('device_name_')) {
+          final mac = key.substring('device_name_'.length);
+          final val = prefs.getString(key);
+          if (val != null) {
+            if (val.toLowerCase() == 'disconnected') {
+              prefs.remove(key);
+            } else {
+              _deviceNames[mac] = val;
+            }
+          }
+        }
+      }
+
       notifyListeners();
     } catch (_) {
       // Gracefully fall back to defaults if SharedPreferences encounters an error
@@ -137,6 +193,7 @@ class ThemeController extends ChangeNotifier {
 
   /// Updates the last connected friendly name and saves it to local storage.
   Future<void> setLastConnectedName(String name) async {
+    if (name.isEmpty || name.toLowerCase() == 'disconnected') return;
     if (_lastConnectedName == name) return;
     _lastConnectedName = name;
     notifyListeners();

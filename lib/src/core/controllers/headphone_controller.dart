@@ -41,10 +41,21 @@ class HeadphoneController extends ChangeNotifier {
     _status = _service.currentStatus;
     _statusSub = _service.statusStream.listen((newStatus) {
       _status = newStatus;
-      if (newStatus.isConnected && _connectingMac != null) {
-        themeController.setLastConnectedMac(_connectingMac!);
-        themeController.setLastConnectedName(newStatus.deviceName);
-        _connectingMac = null;
+      if (newStatus.isConnected) {
+        final currentMac = themeController.lastConnectedMac;
+        final targetMac = _connectingMac ?? currentMac;
+
+        if (_connectingMac != null) {
+          themeController.setLastConnectedMac(_connectingMac!);
+          _connectingMac = null;
+        }
+
+        if (newStatus.deviceName.isNotEmpty && newStatus.deviceName.toLowerCase() != 'disconnected') {
+          themeController.setLastConnectedName(newStatus.deviceName);
+          if (targetMac.isNotEmpty) {
+            themeController.saveDeviceName(targetMac, newStatus.deviceName);
+          }
+        }
       }
       notifyListeners();
     });

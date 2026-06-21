@@ -375,6 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 24),
 
         // Noise Control Section
         if (!_isConnected || status.ancMode != 'Unknown') ...[
@@ -1594,22 +1595,11 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
     final other = _devices.where((d) => !_isRecommended(d.name)).toList();
 
     return AlertDialog(
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Connect Headset',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (_isLoading)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-        ],
+      title: Text(
+        'Connect Headset',
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w900,
+        ),
       ),
       content: SizedBox(
         width: 400,
@@ -1659,7 +1649,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                               color: theme.colorScheme.primary,
                             ),
                             title: Text(
-                              dev.name,
+                              widget.headphoneController.themeController.getDeviceName(dev.macAddress, dev.name),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(dev.macAddress),
@@ -1684,7 +1674,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                           ),
                           ...other.map((dev) => ListTile(
                             leading: const Icon(Icons.bluetooth),
-                            title: Text(dev.name),
+                            title: Text(widget.headphoneController.themeController.getDeviceName(dev.macAddress, dev.name)),
                             subtitle: Text(dev.macAddress),
                             onTap: () {
                               Navigator.pop(context);
@@ -1710,7 +1700,13 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
         ),
         TextButton.icon(
           onPressed: _isLoading ? null : _startScan,
-          icon: const Icon(Icons.refresh),
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh),
           label: const Text('Refresh'),
         ),
       ],
