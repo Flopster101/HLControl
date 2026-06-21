@@ -199,6 +199,7 @@ class SimulationHeadphoneService implements HeadphoneService {
   @override
   Future<void> refreshStatus() async {}
 
+  @override
   void dispose() {
     _themeController.removeListener(_onThemeChanged);
     _controller.close();

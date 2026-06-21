@@ -21,4 +21,5 @@ abstract class HeadphoneService {
   Future<void> setEqPreset(int presetIdx); // 0-4
   Future<void> renameDevice(String newName);
   Future<void> refreshStatus();
+  void dispose();
 }

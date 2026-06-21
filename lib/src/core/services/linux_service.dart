@@ -300,6 +300,7 @@ class LinuxHeadphoneService implements HeadphoneService {
     _sendCommand('get_status', null);
   }
 
+  @override
   void dispose() {
     disconnect();
     _controller.close();

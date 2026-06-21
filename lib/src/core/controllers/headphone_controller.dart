@@ -4,6 +4,7 @@ import '../../ui/theme/theme_controller.dart';
 import '../models/bluetooth_device.dart';
 import '../models/headphone_status.dart';
 import '../services/headphone_service.dart';
+import '../services/android_service.dart';
 import '../services/linux_service.dart';
 import '../services/simulation_service.dart';
 
@@ -31,8 +32,7 @@ class HeadphoneController extends ChangeNotifier {
       _service = SimulationHeadphoneService(themeController);
     } else {
       if (defaultTargetPlatform == TargetPlatform.android) {
-        // Fallback to Simulation for now on Android until AndroidService is built
-        _service = SimulationHeadphoneService(themeController);
+        _service = AndroidHeadphoneService();
       } else {
         _service = LinuxHeadphoneService();
       }
@@ -66,11 +66,7 @@ class HeadphoneController extends ChangeNotifier {
     final isMockActive = _service is SimulationHeadphoneService;
     if (shouldBeMock != isMockActive) {
       // Clean up old service
-      if (_service is LinuxHeadphoneService) {
-        (_service as LinuxHeadphoneService).dispose();
-      } else if (_service is SimulationHeadphoneService) {
-        (_service as SimulationHeadphoneService).dispose();
-      }
+      _service.dispose();
 
       _initService();
       notifyListeners();
@@ -157,11 +153,7 @@ class HeadphoneController extends ChangeNotifier {
   void dispose() {
     themeController.removeListener(_onThemeSettingsChanged);
     _statusSub?.cancel();
-    if (_service is LinuxHeadphoneService) {
-      (_service as LinuxHeadphoneService).dispose();
-    } else if (_service is SimulationHeadphoneService) {
-      (_service as SimulationHeadphoneService).dispose();
-    }
+    _service.dispose();
     super.dispose();
   }
 }
