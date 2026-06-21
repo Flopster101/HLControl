@@ -33,9 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _selectedAncMode {
     final mode = widget.headphoneController.status.ancMode;
     if (mode.contains('Normal') || mode.contains('Off')) return 'Normal';
+    if (mode.contains('Adaptive')) return 'Adaptive';
     if (mode.contains('ANC')) return 'ANC On';
     if (mode.contains('Transparency') || mode.contains('Aware')) return 'Transparency';
-    if (mode.contains('Adaptive')) return 'Adaptive';
     return 'Normal';
   }
 
