@@ -409,6 +409,18 @@ class HaylouHeadphoneController:
         status = {}
 
         name = self.query_device_name()
+        if not name or name == "Unknown":
+            try:
+                out = subprocess.check_output(["bluetoothctl", "devices"], text=True)
+                for line in out.splitlines():
+                    m = re.match(r"Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)", line)
+                    if m:
+                        mac, dname = m.groups()
+                        if mac.lower() == self.mac_address.lower():
+                            name = dname
+                            break
+            except Exception:
+                pass
         status['device_name'] = name if name else "Unknown"
 
         battery = self.query_battery()

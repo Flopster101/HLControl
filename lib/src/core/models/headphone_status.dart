@@ -8,11 +8,11 @@ class HeadphoneStatus {
   final String ancMode;
   final int ancIntensity;
   final String eqPreset;
-  final bool gameMode;
-  final bool windNoise;
-  final bool multipoint;
-  final bool wearDetection;
-  final int autoShutdownIndex; // 0=30m, 1=1h, 2=3h, 3=5h, 4=Never
+  final bool? gameMode;
+  final bool? windNoise;
+  final bool? multipoint;
+  final bool? wearDetection;
+  final int? autoShutdownIndex; // 0=30m, 1=1h, 2=3h, 3=5h, 4=Never
   final String spatialAudioMode; // Off, Static, Dynamic
   final String spatialScene; // Music, Sport, Movie
   final String? error;
@@ -25,11 +25,11 @@ class HeadphoneStatus {
     required this.ancMode,
     required this.ancIntensity,
     required this.eqPreset,
-    required this.gameMode,
-    required this.windNoise,
-    required this.multipoint,
-    required this.wearDetection,
-    required this.autoShutdownIndex,
+    this.gameMode,
+    this.windNoise,
+    this.multipoint,
+    this.wearDetection,
+    this.autoShutdownIndex,
     required this.spatialAudioMode,
     required this.spatialScene,
     this.error,

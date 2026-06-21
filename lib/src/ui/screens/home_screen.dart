@@ -28,6 +28,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isConnected => widget.headphoneController.isConnected;
   bool get _isConnecting => widget.headphoneController.isConnecting;
   String get _deviceName => widget.headphoneController.deviceName;
+  bool get _isOverEar {
+    final name = _deviceName.toLowerCase();
+    return name.contains('s40') || name.contains('s35') || name.contains('s30');
+  }
   int get _batteryPercent => widget.headphoneController.batteryPercent;
 
   String get _selectedAncMode {
@@ -43,16 +47,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String get _selectedEqPreset => widget.headphoneController.status.eqPreset;
 
-  bool get _gameMode => widget.headphoneController.status.gameMode;
-  bool get _windNoiseReduction => widget.headphoneController.status.windNoise;
-  bool get _multipoint => widget.headphoneController.status.multipoint;
+  bool get _gameMode => widget.headphoneController.status.gameMode ?? false;
+  bool get _windNoiseReduction => widget.headphoneController.status.windNoise ?? false;
+  bool get _multipoint => widget.headphoneController.status.multipoint ?? false;
 
   String get _spatialAudioMode => widget.headphoneController.status.spatialAudioMode;
   String get _spatialScene => widget.headphoneController.status.spatialScene;
 
-  bool get _wearDetection => widget.headphoneController.status.wearDetection;
+  bool get _wearDetection => widget.headphoneController.status.wearDetection ?? false;
 
-  int get _autoShutdownIndex => widget.headphoneController.status.autoShutdownIndex;
+  int get _autoShutdownIndex => widget.headphoneController.status.autoShutdownIndex ?? 4;
   final List<String> _shutdownOptions = ['30 Min', '1 Hour', '3 Hours', '5 Hours', 'Never'];
 
   // Custom EQ states (10-band slider values from -10 to +10 dB)
@@ -408,6 +412,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- CONTROL TAB ---
   Widget _buildControlTab(ThemeData theme) {
+    final status = widget.headphoneController.status;
+    final isWearSupported = !_isOverEar && status.wearDetection != null;
+    final hasAudioFeatures = !_isConnected ||
+        status.gameMode != null ||
+        status.windNoise != null ||
+        status.multipoint != null ||
+        isWearSupported ||
+        status.spatialAudioMode != 'Unknown';
     return _buildCenteredScrollable(
       key: const ValueKey(0),
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
@@ -435,41 +447,47 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 32),
 
-        _buildSectionHeader(theme, 'Noise Control'),
-        const SizedBox(height: 12),
-        AncSelector(
-          selectedMode: _selectedAncMode,
-          enabled: _isConnected,
-          onChanged: (mode) {
-            int modeVal = 0;
-            if (mode == 'ANC On') {
-              modeVal = 1;
-            } else if (mode == 'Transparency') {
-              modeVal = 2;
-            } else if (mode == 'Adaptive') {
-              modeVal = 4;
-            }
-            widget.headphoneController.setAncMode(modeVal);
-          },
-        ),
-
-        // Dynamic ANC Intensity selector
-        if (_isConnected && (_selectedAncMode == 'ANC On' || _selectedAncMode == 'Adaptive')) ...[
+        // Noise Control Section
+        if (!_isConnected || status.ancMode != 'Unknown') ...[
+          _buildSectionHeader(theme, 'Noise Control'),
           const SizedBox(height: 12),
-          _buildAncIntensityCard(theme),
+          AncSelector(
+            selectedMode: _selectedAncMode,
+            enabled: _isConnected,
+            onChanged: (mode) {
+              int modeVal = 0;
+              if (mode == 'ANC On') {
+                modeVal = 1;
+              } else if (mode == 'Transparency') {
+                modeVal = 2;
+              } else if (mode == 'Adaptive') {
+                modeVal = 4;
+              }
+              widget.headphoneController.setAncMode(modeVal);
+            },
+          ),
+          if (_isConnected && (_selectedAncMode == 'ANC On' || _selectedAncMode == 'Adaptive')) ...[
+            const SizedBox(height: 12),
+            _buildAncIntensityCard(theme),
+          ],
+          const SizedBox(height: 28),
         ],
-        const SizedBox(height: 28),
 
-        _buildSectionHeader(theme, 'Auto Shutdown'),
-        const SizedBox(height: 12),
-        _buildAutoShutdownCard(theme),
-        const SizedBox(height: 28),
+        // Auto Shutdown Section
+        if (!_isConnected || (status.autoShutdownIndex != null && !_isOverEar)) ...[
+          _buildSectionHeader(theme, 'Auto Shutdown'),
+          const SizedBox(height: 12),
+          _buildAutoShutdownCard(theme),
+          const SizedBox(height: 28),
+        ],
 
-        _buildSectionHeader(theme, 'Audio Features'),
-        const SizedBox(height: 12),
-        _buildFeaturesCard(theme),
+        // Audio Features Section
+        if (hasAudioFeatures) ...[
+          _buildSectionHeader(theme, 'Audio Features'),
+          const SizedBox(height: 12),
+          _buildFeaturesCard(theme),
+        ],
       ],
     );
   }
@@ -1196,61 +1214,92 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeaturesCard(ThemeData theme) {
+    final status = widget.headphoneController.status;
+    final List<Widget> children = [];
+
+    void addDividerIfNotEmpty() {
+      if (children.isNotEmpty) {
+        children.add(const Divider(height: 1, indent: 16, endIndent: 16));
+      }
+    }
+
+    // Game Mode
+    if (!_isConnected || status.gameMode != null) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.sports_esports),
+        title: const Text('Game Mode'),
+        subtitle: const Text('Low-latency audio channel'),
+        value: _gameMode,
+        onChanged: _isConnected
+            ? (val) {
+                widget.headphoneController.setGameMode(val);
+              }
+            : null,
+      ));
+    }
+
+    // Wind Noise Reduction
+    if (!_isConnected || status.windNoise != null) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.air),
+        title: const Text('Wind Noise Reduction'),
+        subtitle: const Text('Filters out outdoor wind noise'),
+        value: _windNoiseReduction,
+        onChanged: _isConnected
+            ? (val) {
+                widget.headphoneController.setWindNoise(val);
+              }
+            : null,
+      ));
+    }
+
+    // Multipoint Connection
+    if (!_isConnected || status.multipoint != null) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.link),
+        title: const Text('Multipoint Connection'),
+        subtitle: const Text('Dual simultaneous device connections'),
+        value: _multipoint,
+        onChanged: _isConnected
+            ? (val) {
+                widget.headphoneController.setMultipoint(val);
+              }
+            : null,
+      ));
+    }
+
+    // Smart Wear Detection
+    if (!_isConnected || (!_isOverEar && status.wearDetection != null)) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.hearing),
+        title: const Text('Smart Wear Detection'),
+        subtitle: const Text('Auto-pause audio on removal'),
+        value: _wearDetection,
+        onChanged: _isConnected
+            ? (val) {
+                widget.headphoneController.setWearDetection(val);
+              }
+            : null,
+      ));
+    }
+
+    // Spatial Audio
+    if (!_isConnected || status.spatialAudioMode != 'Unknown') {
+      addDividerIfNotEmpty();
+      children.add(_buildSpatialAudioTile(theme));
+    }
+
+    if (children.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Card(
       child: Column(
-        children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.sports_esports),
-            title: const Text('Game Mode'),
-            subtitle: const Text('Low-latency audio channel'),
-            value: _gameMode,
-            onChanged: _isConnected
-                ? (val) {
-                    widget.headphoneController.setGameMode(val);
-                  }
-                : null,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            secondary: const Icon(Icons.air),
-            title: const Text('Wind Noise Reduction'),
-            subtitle: const Text('Filters out outdoor wind noise'),
-            value: _windNoiseReduction,
-            onChanged: _isConnected
-                ? (val) {
-                    widget.headphoneController.setWindNoise(val);
-                  }
-                : null,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            secondary: const Icon(Icons.link),
-            title: const Text('Multipoint Connection'),
-            subtitle: const Text('Dual simultaneous device connections'),
-            value: _multipoint,
-            onChanged: _isConnected
-                ? (val) {
-                    widget.headphoneController.setMultipoint(val);
-                  }
-                : null,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          SwitchListTile(
-            secondary: const Icon(Icons.hearing),
-            title: const Text('Smart Wear Detection'),
-            subtitle: const Text('Auto-pause audio on removal'),
-            value: _wearDetection,
-            onChanged: _isConnected
-                ? (val) {
-                    widget.headphoneController.setWearDetection(val);
-                  }
-                : null,
-          ),
-          const Divider(height: 1, indent: 16, endIndent: 16),
-
-          // Spatial Audio expanded structure: Mode & Scene
-          _buildSpatialAudioTile(theme),
-        ],
+        children: children,
       ),
     );
   }

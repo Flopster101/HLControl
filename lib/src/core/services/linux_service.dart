@@ -191,14 +191,21 @@ class LinuxHeadphoneService implements HeadphoneService {
           final ancStr = jsonMap['anc_mode'] as String? ?? 'Normal (Off)';
           final eqStr = jsonMap['eq_mode'] as String? ?? 'Default';
 
-          final gameVal = jsonMap['game_mode'] == 'Enabled';
-          final windVal = jsonMap['wind_noise'] == 'Enabled';
-          final multiVal = jsonMap['multipoint'] == 'Enabled';
-          final wearVal = jsonMap['wear_detection'] == 'Enabled';
+          bool? parseNullableBool(String? val) {
+            if (val == null || val == 'Unknown') return null;
+            return val == 'Enabled';
+          }
+
+          final gameVal = parseNullableBool(jsonMap['game_mode'] as String?);
+          final windVal = parseNullableBool(jsonMap['wind_noise'] as String?);
+          final multiVal = parseNullableBool(jsonMap['multipoint'] as String?);
+          final wearVal = parseNullableBool(jsonMap['wear_detection'] as String?);
 
           final shutdownStr = jsonMap['auto_shutdown'] as String?;
-          int shutdownIdx = 4;
-          if (shutdownStr != null) {
+          int? shutdownIdx = 4;
+          if (shutdownStr == 'Unknown') {
+            shutdownIdx = null;
+          } else if (shutdownStr != null) {
             if (shutdownStr.contains('30')) {
               shutdownIdx = 0;
             } else if (shutdownStr.contains('1 hour') || shutdownStr.contains('1 Hour')) {
