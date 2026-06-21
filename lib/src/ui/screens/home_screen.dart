@@ -1,9 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../theme/theme_controller.dart';
 import '../widgets/anc_selector.dart';
 import '../widgets/eq_selector.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.themeController});
+
+  final ThemeController themeController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -424,7 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: _batteryPercent / 100.0,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+              backgroundColor: theme.colorScheme.onSurface.withOpacity(0.16),
               valueColor: AlwaysStoppedAnimation<Color>(
                 _batteryPercent > 25
                     ? theme.colorScheme.primary
@@ -742,6 +746,55 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 28),
+        _buildSectionHeader(theme, 'Theme Settings'),
+        const SizedBox(height: 12),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('Theme Mode'),
+                subtitle: Text(_getThemeModeName(widget.themeController.themeMode)),
+                trailing: DropdownButton<ThemeMode>(
+                  value: widget.themeController.themeMode,
+                  underline: const SizedBox.shrink(),
+                  onChanged: (mode) {
+                    if (mode != null) {
+                      widget.themeController.setThemeMode(mode);
+                    }
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: ThemeMode.system,
+                      child: Text('System Default'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.light,
+                      child: Text('Light Mode'),
+                    ),
+                    DropdownMenuItem(
+                      value: ThemeMode.dark,
+                      child: Text('Dark Mode'),
+                    ),
+                  ],
+                ),
+              ),
+              if (defaultTargetPlatform == TargetPlatform.android) ...[
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                SwitchListTile(
+                  secondary: const Icon(Icons.color_lens_outlined),
+                  title: const Text('Dynamic Colors'),
+                  subtitle: const Text('Use wallpaper-based Material You colors (Android 12+)'),
+                  value: widget.themeController.useDynamicColor,
+                  onChanged: (val) {
+                    widget.themeController.setUseDynamicColor(val);
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
         _buildSectionHeader(theme, 'Developer Simulator'),
         const SizedBox(height: 12),
         _buildSimulatorCard(theme),
@@ -812,6 +865,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  String _getThemeModeName(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.system:
+        return 'System Default';
+      case ThemeMode.light:
+        return 'Light Mode';
+      case ThemeMode.dark:
+        return 'Dark Mode';
+    }
   }
 
   // --- GENERAL WIDGETS ---

@@ -13,7 +13,7 @@ class EqSelector extends StatelessWidget {
   final bool enabled;
 
   static const List<Map<String, dynamic>> _presets = [
-    {'id': 'Default', 'label': 'Default', 'color': Color(0xFF045AED)},
+    {'id': 'Default', 'label': 'Default', 'color': null},
     {'id': 'Subwoofer', 'label': 'Bass Booster', 'color': Color(0xFFE74C3C)},
     {'id': 'Rock', 'label': 'Rock', 'color': Color(0xFFF1C40F)},
     {'id': 'Soft', 'label': 'Soft', 'color': Color(0xFF2ECC71)},
@@ -34,7 +34,7 @@ class EqSelector extends StatelessWidget {
           final preset = _presets[index];
           final id = preset['id'] as String;
           final label = preset['label'] as String;
-          final color = preset['color'] as Color;
+          final color = (preset['color'] as Color?) ?? theme.colorScheme.primary;
           final isSelected = selectedPreset == id;
 
           return AnimatedContainer(
