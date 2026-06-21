@@ -15,7 +15,7 @@ abstract class HeadphoneService {
   Future<void> setMultipoint(bool enabled);
   Future<void> setWearDetection(bool enabled);
   Future<void> setAutoShutdown(int timerVal); // Liesheng protocol timer byte (1, 2, 6, 10, 255)
-  Future<void> setSpatialAudio(bool enabled);
+  Future<void> setSpatialAudio(String mode);
   Future<void> setSpatialScene(int sceneIdx); // 0=Music, 1=Sport, 2=Movie
   Future<void> setEqPreset(int presetIdx); // 0-4
   Future<void> renameDevice(String newName);

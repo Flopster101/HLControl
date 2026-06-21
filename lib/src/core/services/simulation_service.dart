@@ -158,8 +158,8 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
-  Future<void> setSpatialAudio(bool enabled) async {
-    _updateStatus(_status.copyWith(spatialAudioMode: enabled ? 'Static' : 'Off'));
+  Future<void> setSpatialAudio(String mode) async {
+    _updateStatus(_status.copyWith(spatialAudioMode: mode));
   }
 
   @override

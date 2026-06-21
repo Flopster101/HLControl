@@ -210,7 +210,7 @@ class LinuxHeadphoneService implements HeadphoneService {
             }
           }
 
-          final spatialVal = jsonMap['spatial_audio'] == 'Enabled';
+          final spatialStr = jsonMap['spatial_audio'] as String? ?? 'Off';
           final sceneStr = jsonMap['spatial_scene'] as String? ?? 'Music';
 
           _updateStatus(HeadphoneStatus(
@@ -226,7 +226,7 @@ class LinuxHeadphoneService implements HeadphoneService {
             multipoint: multiVal,
             wearDetection: wearVal,
             autoShutdownIndex: shutdownIdx,
-            spatialAudioMode: spatialVal ? 'Static' : 'Off',
+            spatialAudioMode: spatialStr,
             spatialScene: sceneStr,
             error: jsonMap['error'],
           ));
@@ -283,8 +283,21 @@ class LinuxHeadphoneService implements HeadphoneService {
   }
 
   @override
-  Future<void> setSpatialAudio(bool enabled) async {
-    _sendCommand('set_spatial_audio', enabled);
+  Future<void> setSpatialAudio(String mode) async {
+    int val;
+    switch (mode) {
+      case 'Dynamic':
+        val = 0;
+        break;
+      case 'Static':
+        val = 1;
+        break;
+      case 'Off':
+      default:
+        val = 2;
+        break;
+    }
+    _sendCommand('set_spatial_audio', val);
   }
 
   @override

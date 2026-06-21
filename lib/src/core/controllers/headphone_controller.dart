@@ -113,8 +113,8 @@ class HeadphoneController extends ChangeNotifier {
     await _service.setAutoShutdown(byteVal);
   }
 
-  Future<void> setSpatialAudio(bool enabled) async {
-    await _service.setSpatialAudio(enabled);
+  Future<void> setSpatialAudio(String mode) async {
+    await _service.setSpatialAudio(mode);
   }
 
   Future<void> setSpatialScene(int sceneIdx) async {

@@ -1305,7 +1305,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onSelectionChanged: _isConnected
                   ? (newSelection) {
                       final mode = newSelection.first;
-                      widget.headphoneController.setSpatialAudio(mode != 'Off');
+                      widget.headphoneController.setSpatialAudio(mode);
                     }
                   : null,
             ),

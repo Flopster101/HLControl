@@ -486,7 +486,15 @@ class HaylouHeadphoneController:
             status['auto_shutdown'] = "Unknown"
 
         if ORD_RUN_SPATIAL_AUDIO in run_attrs:
-            status['spatial_audio'] = "Enabled" if run_attrs[ORD_RUN_SPATIAL_AUDIO][0] == 1 else "Disabled"
+            val = run_attrs[ORD_RUN_SPATIAL_AUDIO][0]
+            if val == 0:
+                status['spatial_audio'] = "Dynamic"
+            elif val == 1:
+                status['spatial_audio'] = "Static"
+            elif val == 2:
+                status['spatial_audio'] = "Off"
+            else:
+                status['spatial_audio'] = f"Unknown ({val})"
         else:
             status['spatial_audio'] = "Unknown"
 
@@ -530,8 +538,9 @@ class HaylouHeadphoneController:
     def set_auto_shutdown(self, val):
         return self.set_setting(ATTR_WRITE_AUTO_SHUTDOWN, val)
 
-    def set_spatial_audio(self, enable):
-        return self.set_setting(ATTR_WRITE_SPATIAL_AUDIO, 1 if enable else 0)
+    def set_spatial_audio(self, mode):
+        # mode can be 0 (Dynamic), 1 (Static), 2 (Off)
+        return self.set_setting(ATTR_WRITE_SPATIAL_AUDIO, mode)
 
     def set_spatial_scene(self, scene_idx):
         if scene_idx not in [0, 1, 2]:
@@ -761,9 +770,18 @@ def draw_dashboard(status, msg=""):
     draw_line("Wear Detection", get_toggle_display("wear_detection"))
 
     # Spatial Audio Displays
-    draw_line("Spatial Audio", get_toggle_display("spatial_audio"))
-    spatial_val = status.get('spatial_audio', 'Disabled')
-    if spatial_val == 'Enabled':
+    spatial_val = status.get('spatial_audio', 'Off')
+    if spatial_val == 'Off':
+        spatial_display = f"{COLOR_OFF}[ OFF ]{RESET}"
+    elif spatial_val == 'Static':
+        spatial_display = f"{COLOR_ON}[ STATIC ]{RESET}"
+    elif spatial_val == 'Dynamic':
+        spatial_display = f"{COLOR_ON}[ DYNAMIC ]{RESET}"
+    else:
+        spatial_display = f"{COLOR_UNKNOWN}[ {spatial_val} ]{RESET}"
+    draw_line("Spatial Audio", spatial_display)
+
+    if spatial_val != 'Off':
         scene_str = status.get('spatial_scene', 'Unknown')
         draw_line("Spatial Scene", f"{COLOR_VAL}{scene_str}{RESET}")
     else:
@@ -913,10 +931,24 @@ def interactive_menu(controller):
             else:
                 msg = "Invalid EQ Preset choice."
         elif choice == "8":
-            current = status.get('spatial_audio', 'Disabled')
-            enable = (current != "Enabled")
-            success = controller.set_spatial_audio(enable)
-            msg = f"Spatial Audio {'enabled' if enable else 'disabled'}." if success else "Failed to update Spatial Audio."
+            print("\nSelect Spatial Audio Mode:")
+            print(" 0. Off (Close)")
+            print(" 1. Static (Spatial Audio On)")
+            print(" 2. Dynamic (Head Tracking)")
+            try:
+                spatial_choice = input("Select mode [0-2]: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                continue
+            if spatial_choice in ['0', '1', '2']:
+                m = int(spatial_choice)
+                # Map option: 0 -> 2 (Off), 1 -> 1 (Static), 2 -> 0 (Dynamic)
+                val_map = {0: 2, 1: 1, 2: 0}
+                success = controller.set_spatial_audio(val_map[m])
+                modes_desc = {0: "Off", 1: "Static", 2: "Dynamic"}
+                msg = f"Spatial Audio mode set to {modes_desc[m]}." if success else "Failed to set Spatial Audio mode."
+            else:
+                msg = "Invalid Spatial Audio mode choice."
         elif choice == "9":
             print("\nSelect Spatial Audio Scene:")
             print(" 0. Music (Music surround optimization)")
@@ -1040,7 +1072,20 @@ def json_mode_loop(controller):
                     elif action == "set_auto_shutdown":
                         success = controller.set_auto_shutdown(int(value))
                     elif action == "set_spatial_audio":
-                        success = controller.set_spatial_audio(bool(value))
+                        if isinstance(value, bool):
+                            val_int = 1 if value else 2
+                        else:
+                            try:
+                                val_int = int(value)
+                            except ValueError:
+                                val_str = str(value).lower()
+                                if val_str == "dynamic":
+                                    val_int = 0
+                                elif val_str == "static":
+                                    val_int = 1
+                                else:
+                                    val_int = 2
+                        success = controller.set_spatial_audio(val_int)
                     elif action == "set_spatial_scene":
                         success = controller.set_spatial_scene(int(value))
                     elif action == "set_eq_preset":
