@@ -20,21 +20,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isConnected = true;
   String _deviceName = 'HAYLOU S40';
   int _batteryPercent = 85;
-  
+
   String _selectedAncMode = 'ANC On';
   int _selectedAncIntensity = 0; // 0 = High, 1 = Medium, 2 = Low (firmware codes)
-  
+
   String _selectedEqPreset = 'Default';
-  
+
   bool _gameMode = false;
   bool _windNoiseReduction = false;
   bool _multipoint = false;
-  
+
   String _spatialAudioMode = 'Off'; // Off, Static, Dynamic
   String _spatialScene = 'Music'; // Music, Sport, Movie
-  
+
   bool _wearDetection = true;
-  
+
   // 0 = 30m, 1 = 1h, 2 = 3h, 3 = 5h, 4 = Never
   int _autoShutdownIndex = 4;
   final List<String> _shutdownOptions = ['30 Min', '1 Hour', '3 Hours', '5 Hours', 'Never'];
@@ -313,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _buildConnectionBanner(theme),
         const SizedBox(height: 24),
-        
+
         // Premium Product Image & Battery Indicators
         Center(
           child: Column(
@@ -335,7 +335,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 32),
-        
+
         _buildSectionHeader(theme, 'Noise Control'),
         const SizedBox(height: 12),
         AncSelector(
@@ -347,19 +347,19 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
-        
+
         // Dynamic ANC Intensity selector
         if (_isConnected && (_selectedAncMode == 'ANC On' || _selectedAncMode == 'Adaptive')) ...[
           const SizedBox(height: 12),
           _buildAncIntensityCard(theme),
         ],
         const SizedBox(height: 28),
-        
+
         _buildSectionHeader(theme, 'Auto Shutdown'),
         const SizedBox(height: 12),
         _buildAutoShutdownCard(theme),
         const SizedBox(height: 28),
-        
+
         _buildSectionHeader(theme, 'Audio Features'),
         const SizedBox(height: 12),
         _buildFeaturesCard(theme),
@@ -1065,7 +1065,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 : null,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
-          
+
           // Spatial Audio expanded structure: Mode & Scene
           _buildSpatialAudioTile(theme),
         ],
@@ -1218,7 +1218,7 @@ class _EqCurvePainter extends CustomPainter {
       // Maps slider value [-10, 10] to screen coordinates [h*0.9, h*0.1]
       final mappedY = (h / 2) - (values[i] / 20) * (h * 0.8);
       points.add(Offset(i * step, mappedY));
-      
+
       // Draw grid vertical markers
       canvas.drawLine(Offset(i * step, 0), Offset(i * step, h), gridPaint);
     }

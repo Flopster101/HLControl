@@ -7,11 +7,11 @@ import 'src/ui/theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize ThemeController and pre-load settings to avoid splash theme flashing
   final themeController = ThemeController();
   await themeController.loadSettings();
-  
+
   runApp(HlControlApp(themeController: themeController));
 }
 
@@ -29,7 +29,7 @@ class HlControlApp extends StatelessWidget {
           builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
             final useDynamic = themeController.useDynamicColor &&
                 defaultTargetPlatform == TargetPlatform.android;
-            
+
             return MaterialApp(
               title: 'HL Control',
               debugShowCheckedModeBanner: false,

@@ -21,12 +21,12 @@ class ThemeController extends ChangeNotifier {
   Future<void> loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       final modeIndex = prefs.getInt(_themeModeKey);
       if (modeIndex != null && modeIndex >= 0 && modeIndex < ThemeMode.values.length) {
         _themeMode = ThemeMode.values[modeIndex];
       }
-      
+
       _useDynamicColor = prefs.getBool(_useDynamicColorKey) ?? true;
       notifyListeners();
     } catch (_) {
