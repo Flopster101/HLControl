@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'src/ui/screens/home_screen.dart';
+import 'src/ui/theme/app_theme.dart';
 
 void main() {
-  runApp(const MainApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const HlControlApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class HlControlApp extends StatelessWidget {
+  const HlControlApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
+    return MaterialApp(
+      title: 'HL Control',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark,
+      home: const HomeScreen(),
     );
   }
 }
