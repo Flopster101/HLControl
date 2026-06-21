@@ -13,18 +13,27 @@ class ThemeController extends ChangeNotifier {
   static const _isDeveloperModeKey = 'is_developer_mode';
   static const _isMockConnectedKey = 'is_mock_connected';
   static const _mockBatteryPercentKey = 'mock_battery_percent';
+  static const _autoConnectLastHeadphonesKey = 'auto_connect_last_headphones';
+  static const _lastConnectedMacKey = 'last_connected_mac';
+  static const _lastConnectedNameKey = 'last_connected_name';
 
   ThemeMode _themeMode = ThemeMode.dark; // Default to dark mode for premium branding
   bool _useDynamicColor = true; // Default to true for Material You support
   bool _isDeveloperMode = false; // Hidden developer mode
   bool _isMockConnected = false; // Default to false (simulation mode disabled by default)
   int _mockBatteryPercent = 85;
+  bool _autoConnectLastHeadphones = true; // Auto connect to last headphones (enabled by default)
+  String _lastConnectedMac = '';
+  String _lastConnectedName = '';
 
   ThemeMode get themeMode => _themeMode;
   bool get useDynamicColor => _useDynamicColor;
   bool get isDeveloperMode => _isDeveloperMode;
   bool get isMockConnected => _isMockConnected;
   int get mockBatteryPercent => _mockBatteryPercent;
+  bool get autoConnectLastHeadphones => _autoConnectLastHeadphones;
+  String get lastConnectedMac => _lastConnectedMac;
+  String get lastConnectedName => _lastConnectedName;
 
   /// Loads persisted settings from local storage. Awaited in main before runApp.
   Future<void> loadSettings() async {
@@ -40,6 +49,9 @@ class ThemeController extends ChangeNotifier {
       _isDeveloperMode = prefs.getBool(_isDeveloperModeKey) ?? false;
       _isMockConnected = prefs.getBool(_isMockConnectedKey) ?? false;
       _mockBatteryPercent = prefs.getInt(_mockBatteryPercentKey) ?? 85;
+      _autoConnectLastHeadphones = prefs.getBool(_autoConnectLastHeadphonesKey) ?? true;
+      _lastConnectedMac = prefs.getString(_lastConnectedMacKey) ?? '';
+      _lastConnectedName = prefs.getString(_lastConnectedNameKey) ?? '';
       notifyListeners();
     } catch (_) {
       // Gracefully fall back to defaults if SharedPreferences encounters an error
@@ -98,6 +110,39 @@ class ThemeController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_mockBatteryPercentKey, value);
+    } catch (_) {}
+  }
+
+  /// Updates the auto connect last headphones setting and saves it to local storage.
+  Future<void> setAutoConnectLastHeadphones(bool value) async {
+    if (_autoConnectLastHeadphones == value) return;
+    _autoConnectLastHeadphones = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_autoConnectLastHeadphonesKey, value);
+    } catch (_) {}
+  }
+
+  /// Updates the last connected MAC and saves it to local storage.
+  Future<void> setLastConnectedMac(String mac) async {
+    if (_lastConnectedMac == mac) return;
+    _lastConnectedMac = mac;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastConnectedMacKey, mac);
+    } catch (_) {}
+  }
+
+  /// Updates the last connected friendly name and saves it to local storage.
+  Future<void> setLastConnectedName(String name) async {
+    if (_lastConnectedName == name) return;
+    _lastConnectedName = name;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastConnectedNameKey, name);
     } catch (_) {}
   }
 }

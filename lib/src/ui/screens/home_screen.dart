@@ -239,86 +239,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _connectDevice() async {
+  void _connectDevice() {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Scanning paired devices...'),
-          ],
-        ),
+      barrierDismissible: true,
+      builder: (context) => _DeviceSelectionDialog(
+        headphoneController: widget.headphoneController,
       ),
     );
-
-    try {
-      final List<BluetoothDevice> devices = await widget.headphoneController.getPairedDevices();
-      if (!mounted) return;
-      Navigator.pop(context); // close scanning dialog
-
-      if (devices.isEmpty) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('No Headphones Found'),
-            content: const Text(
-              'No paired Haylou headphones were found on your system. '
-              'Please pair your headphones in your OS Bluetooth settings first.'
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else if (devices.length == 1) {
-        widget.headphoneController.connect(devices[0].macAddress);
-      } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Select Device'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: devices.length,
-                itemBuilder: (context, index) {
-                  final dev = devices[index];
-                  return ListTile(
-                    leading: const Icon(Icons.bluetooth),
-                    title: Text(dev.name),
-                    subtitle: Text(dev.macAddress),
-                    onTap: () {
-                      Navigator.pop(context);
-                      widget.headphoneController.connect(dev.macAddress);
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // close dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
   }
 
   Widget _buildSidebar(ThemeData theme) {
@@ -870,6 +798,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: const Icon(Icons.info_outline),
                 title: const Text('Connection Mode'),
                 subtitle: Text(_isConnected ? 'Bluetooth Classic RFCOMM (Port 10)' : 'Not Connected'),
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              SwitchListTile(
+                secondary: const Icon(Icons.autorenew),
+                title: const Text('Auto Connect to Last Headphones'),
+                subtitle: Text(
+                  widget.themeController.lastConnectedName.isNotEmpty
+                      ? 'Automatically link to: ${widget.themeController.lastConnectedName}'
+                      : 'Automatically connect on startup',
+                ),
+                value: widget.themeController.autoConnectLastHeadphones,
+                onChanged: (val) {
+                  widget.themeController.setAutoConnectLastHeadphones(val);
+                },
               ),
             ],
           ),
@@ -1572,6 +1514,206 @@ class _SidebarItemState extends State<_SidebarItem> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DeviceSelectionDialog extends StatefulWidget {
+  final HeadphoneController headphoneController;
+
+  const _DeviceSelectionDialog({required this.headphoneController});
+
+  @override
+  State<_DeviceSelectionDialog> createState() => _DeviceSelectionDialogState();
+}
+
+class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
+  bool _isLoading = false;
+  List<BluetoothDevice> _devices = [];
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startScan();
+  }
+
+  Future<void> _startScan() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // First get immediately cached/paired devices so the user doesn't see an empty screen
+      final cached = await widget.headphoneController.getPairedDevices();
+      if (mounted) {
+        setState(() {
+          _devices = cached;
+        });
+      }
+
+      // Then run a full bluetooth discovery scan
+      final fresh = await widget.headphoneController.scanDevices();
+      if (mounted) {
+        setState(() {
+          _devices = fresh;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  bool _isRecommended(String name) {
+    final n = name.toLowerCase();
+    return n.contains('haylou') ||
+        n.contains('s40') ||
+        n.contains('s35') ||
+        n.contains('s30') ||
+        n.contains('purfree') ||
+        n.contains('bc04') ||
+        n.contains('ow02') ||
+        n.contains('x1') ||
+        n.contains('t021');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Filter devices
+    final recommended = _devices.where((d) => _isRecommended(d.name)).toList();
+    final other = _devices.where((d) => !_isRecommended(d.name)).toList();
+
+    return AlertDialog(
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Connect Headset',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (_isLoading)
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+        ],
+      ),
+      content: SizedBox(
+        width: 400,
+        height: 350,
+        child: _devices.isEmpty && _isLoading
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Scanning for devices...'),
+                  ],
+                ),
+              )
+            : _devices.isEmpty && _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Error: $_error',
+                        style: TextStyle(color: theme.colorScheme.error),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        if (recommended.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            child: Text(
+                              'RECOMMENDED',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                          ...recommended.map((dev) => ListTile(
+                            leading: Icon(
+                              Icons.headphones,
+                              color: theme.colorScheme.primary,
+                            ),
+                            title: Text(
+                              dev.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(dev.macAddress),
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.headphoneController.connect(dev.macAddress);
+                            },
+                          )),
+                          const Divider(),
+                        ],
+                        if (other.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            child: Text(
+                              'OTHER DEVICES',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                          ...other.map((dev) => ListTile(
+                            leading: const Icon(Icons.bluetooth),
+                            title: Text(dev.name),
+                            subtitle: Text(dev.macAddress),
+                            onTap: () {
+                              Navigator.pop(context);
+                              widget.headphoneController.connect(dev.macAddress);
+                            },
+                          )),
+                        ],
+                        if (_devices.isEmpty && !_isLoading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 32),
+                              child: Text('No devices found nearby.'),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton.icon(
+          onPressed: _isLoading ? null : _startScan,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh'),
+        ),
+      ],
     );
   }
 }

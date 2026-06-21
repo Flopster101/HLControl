@@ -89,9 +89,19 @@ class SimulationHeadphoneService implements HeadphoneService {
   @override
   Future<List<BluetoothDevice>> getPairedDevices() async {
     return [
-      BluetoothDevice(macAddress: '00:1A:7D:DA:71:11', name: 'HAYLOU S40 (Mock 1)'),
-      BluetoothDevice(macAddress: '00:1A:7D:DA:71:22', name: 'HAYLOU S30 (Mock 2)'),
+      BluetoothDevice(macAddress: '11:22:33:44:55:66', name: 'HAYLOU S40 (Mock)'),
+      BluetoothDevice(macAddress: 'AA:BB:CC:DD:EE:11', name: 'HAYLOU S35 (Mock)'),
+      BluetoothDevice(macAddress: 'AA:BB:CC:DD:EE:22', name: 'HAYLOU X1 (Mock)'),
+      BluetoothDevice(macAddress: 'AA:BB:CC:DD:EE:33', name: 'Sony WH-1000XM4 (Mock)'),
+      BluetoothDevice(macAddress: 'AA:BB:CC:DD:EE:44', name: 'JBL Tune 510BT (Mock)'),
+      BluetoothDevice(macAddress: 'AA:BB:CC:DD:EE:55', name: 'HAYLOU Purfree Lite (Mock)'),
     ];
+  }
+
+  @override
+  Future<List<BluetoothDevice>> scanDevices() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    return getPairedDevices();
   }
 
   @override

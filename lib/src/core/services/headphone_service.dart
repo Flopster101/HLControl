@@ -8,6 +8,7 @@ abstract class HeadphoneService {
   Future<void> connect(String macAddress);
   Future<void> disconnect();
   Future<List<BluetoothDevice>> getPairedDevices();
+  Future<List<BluetoothDevice>> scanDevices();
 
   Future<void> setAncMode(int mode); // 0=Normal, 1=ANC, 2=Transparency, 4=Adaptive
   Future<void> setGameMode(bool enabled);

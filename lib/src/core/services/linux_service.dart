@@ -109,38 +109,6 @@ class LinuxHeadphoneService implements HeadphoneService {
   @override
   Future<List<BluetoothDevice>> getPairedDevices() async {
     try {
-      final script = await _extractScript();
-      // Run script in json mode with no MAC to scan paired devices
-      final result = await Process.run('python3', [script.path, '--json']);
-      if (result.exitCode == 0) {
-        final output = result.stdout.toString().trim();
-        // The script prints connecting/failed status immediately, let's parse stdout line by line
-        final lines = output.split('\n');
-        for (var line in lines) {
-          if (line.trim().isEmpty) continue;
-          try {
-            final jsonMap = json.decode(line);
-            if (jsonMap['connection_status'] == 'connecting' || jsonMap['connection_status'] == 'no_devices') {
-              // The Python script prints connecting with mac and device_name
-              if (jsonMap['mac'] != null) {
-                return [
-                  BluetoothDevice(
-                    macAddress: jsonMap['mac'],
-                    name: jsonMap['device_name'] ?? 'HAYLOU Headset',
-                  )
-                ];
-              }
-            }
-          } catch (_) {}
-        }
-      }
-    } catch (e) {
-      // ignore: avoid_print
-      print('Error getting paired devices: $e');
-    }
-
-    // Proactively query bluetoothctl as a backup to scan paired devices if python is slow
-    try {
       final result = await Process.run('bluetoothctl', ['devices']);
       if (result.exitCode == 0) {
         final List<BluetoothDevice> devices = [];
@@ -150,11 +118,8 @@ class LinuxHeadphoneService implements HeadphoneService {
           final match = regex.firstMatch(line);
           if (match != null) {
             final mac = match.group(1)!;
-            final name = match.group(2)!;
-            if (name.toLowerCase().contains('haylou') ||
-                name.toLowerCase().contains('s40') ||
-                name.toLowerCase().contains('s35') ||
-                name.toLowerCase().contains('s30')) {
+            final name = match.group(2)!.trim();
+            if (name.isNotEmpty) {
               devices.add(BluetoothDevice(macAddress: mac, name: name));
             }
           }
@@ -162,8 +127,16 @@ class LinuxHeadphoneService implements HeadphoneService {
         return devices;
       }
     } catch (_) {}
-
     return [];
+  }
+
+  @override
+  Future<List<BluetoothDevice>> scanDevices() async {
+    try {
+      // Run background scan for 4 seconds to discover nearby devices and update the Bluez cache
+      await Process.run('timeout', ['4', 'bluetoothctl', 'scan', 'on']);
+    } catch (_) {}
+    return getPairedDevices();
   }
 
   void _handleStdoutLine(String line) {

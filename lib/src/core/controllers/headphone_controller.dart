@@ -41,9 +41,24 @@ class HeadphoneController extends ChangeNotifier {
     _status = _service.currentStatus;
     _statusSub = _service.statusStream.listen((newStatus) {
       _status = newStatus;
+      if (newStatus.isConnected && _connectingMac != null) {
+        themeController.setLastConnectedMac(_connectingMac!);
+        themeController.setLastConnectedName(newStatus.deviceName);
+        _connectingMac = null;
+      }
       notifyListeners();
     });
+
+    // Auto connect to last headphones if enabled and available
+    if (themeController.autoConnectLastHeadphones &&
+        themeController.lastConnectedMac.isNotEmpty &&
+        !_status.isConnected &&
+        !_status.isConnecting) {
+      connect(themeController.lastConnectedMac);
+    }
   }
+
+  String? _connectingMac;
 
   void _onThemeSettingsChanged() {
     final shouldBeMock = themeController.isMockConnected;
@@ -63,6 +78,7 @@ class HeadphoneController extends ChangeNotifier {
   }
 
   Future<void> connect(String macAddress) async {
+    _connectingMac = macAddress;
     await _service.connect(macAddress);
   }
 
@@ -72,6 +88,10 @@ class HeadphoneController extends ChangeNotifier {
 
   Future<List<BluetoothDevice>> getPairedDevices() async {
     return await _service.getPairedDevices();
+  }
+
+  Future<List<BluetoothDevice>> scanDevices() async {
+    return await _service.scanDevices();
   }
 
   Future<void> setAncMode(int mode) async {
