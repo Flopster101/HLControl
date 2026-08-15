@@ -878,28 +878,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     }
 
-                    return InputChip(
-                      label: Text(name),
-                      selected: isMatch,
-                      onSelected: _isConnected
-                          ? (selected) {
-                              setState(() {
-                                for (int i = 0; i < 10; i++) {
-                                  _eqValues[i] = values[i];
-                                }
-                              });
-                              widget.headphoneController.setEqPreset(15);
-                            }
-                          : null,
-                      onDeleted: _isConnected
-                          ? () {
-                              setState(() {
-                                _customPresets.remove(preset);
-                              });
-                            }
-                          : null,
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                    );
+                      return InputChip(
+                        label: Text(name),
+                        selected: isMatch,
+                        onSelected: _isConnected
+                            ? (selected) {
+                                setState(() {
+                                  for (int i = 0; i < 10; i++) {
+                                    _eqValues[i] = values[i];
+                                  }
+                                });
+                                widget.headphoneController.setCustomEq(_eqValues);
+                              }
+                            : null,
+                        onDeleted: _isConnected
+                            ? () {
+                                setState(() {
+                                  _customPresets.remove(preset);
+                                });
+                              }
+                            : null,
+                        deleteIcon: const Icon(Icons.close, size: 16),
+                      );
                   }).toList(),
                 ),
               ),
@@ -996,15 +996,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 child: Slider(
                                   value: _eqValues[index],
-                                  min: -10,
-                                  max: 10,
-                                  divisions: 20,
+                                  min: -12,
+                                  max: 12,
+                                  divisions: 24,
                                   onChanged: _isConnected
                                       ? (val) {
                                           setState(() {
                                             _eqValues[index] = val;
                                           });
-                                          widget.headphoneController.setEqPreset(15);
+                                        }
+                                      : null,
+                                  onChangeEnd: _isConnected
+                                      ? (val) {
+                                          widget.headphoneController.setCustomEq(_eqValues);
                                         }
                                       : null,
                                 ),
@@ -1671,8 +1675,8 @@ class _EqCurvePainter extends CustomPainter {
 
     final step = w / (values.length - 1);
     for (int i = 0; i < values.length; i++) {
-      // Maps slider value [-10, 10] to screen coordinates [h*0.9, h*0.1]
-      final mappedY = (h / 2) - (values[i] / 20) * (h * 0.8);
+      // Maps slider value [-12, 12] to screen coordinates [h*0.9, h*0.1]
+      final mappedY = (h / 2) - (values[i] / 24) * (h * 0.8);
       points.add(Offset(i * step, mappedY));
 
       // Draw grid vertical markers
