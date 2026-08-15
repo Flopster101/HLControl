@@ -617,35 +617,101 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _getDeviceImageAsset(String deviceName) {
+    final name = deviceName.toLowerCase();
+    if (name.contains('s40')) {
+      if (name.contains('white') || name.contains('beige') || name.contains('silver')) {
+        return 'assets/images/devices/tws_img_earbud_s40_white.webp';
+      }
+      return 'assets/images/devices/tws_img_earbud_s40_black.webp';
+    }
+    if (name.contains('s35')) {
+      return 'assets/images/devices/tws_img_earbud_s35_black.webp';
+    }
+    if (name.contains('s30')) {
+      return 'assets/images/devices/tws_img_earbud_s30_black.webp';
+    }
+    if (name.contains('bc04') || name.contains('purfree')) {
+      return 'assets/images/devices/tws_img_earbud_bc04_black.webp';
+    }
+    if (name.contains('x1') || name.contains('x1l') || name.contains('t003')) {
+      return 'assets/images/devices/tws_img_earbud_t003_black.webp';
+    }
+    if (name.contains('x2') || name.contains('w1') || name.contains('t007')) {
+      return 'assets/images/devices/tws_img_earbud_t007_blue.webp';
+    }
+    if (name.contains('t013')) {
+      return 'assets/images/devices/tws_img_earbud_t013.webp';
+    }
+    if (name.contains('t016') || name.contains('mori')) {
+      return 'assets/images/devices/tws_img_earbud_t016.webp';
+    }
+    if (name.contains('t021') || name.contains('ht06') || name.contains('ht03') || name.contains('flowbuds')) {
+      return 'assets/images/devices/tws_img_earbud_t021_black.webp';
+    }
+    if (name.contains('ht02')) {
+      return 'assets/images/devices/tws_img_earbud_ht02_black.png';
+    }
+    if (name.contains('ow02') || name.contains('earhook')) {
+      return 'assets/images/devices/tws_img_earbud_ow02.webp';
+    }
+    if (name.contains('ow03') || name.contains('airfree')) {
+      return 'assets/images/devices/tws_img_earbud_ow03.webp';
+    }
+    return 'assets/images/devices/tws_img_earbud_s40_black.webp';
+  }
+
   Widget _buildHeadphonesImage(ThemeData theme) {
+    if (!_isConnected) {
+      return Container(
+        width: 180,
+        height: 180,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.35),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.headphones_rounded,
+            size: 76,
+            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.45),
+          ),
+        ),
+      );
+    }
+
+    final imageAsset = _getDeviceImageAsset(_deviceName);
+
     return Container(
       width: 180,
       height: 180,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
+          color: theme.colorScheme.primary.withOpacity(0.25),
           width: 2,
         ),
-        image: DecorationImage(
-          image: const AssetImage('assets/images/headphones.png'),
-          fit: BoxFit.cover,
-          colorFilter: !_isConnected
-              ? const ColorFilter.mode(
-                  Colors.grey,
-                  BlendMode.saturation,
-                )
-              : null,
+      ),
+      child: Center(
+        child: Image.asset(
+          imageAsset,
+          width: 155,
+          height: 155,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              Icons.headphones_rounded,
+              size: 76,
+              color: theme.colorScheme.primary,
+            );
+          },
         ),
       ),
-      child: !_isConnected
-          ? Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.black.withOpacity(0.3),
-              ),
-            )
-          : null,
     );
   }
 
