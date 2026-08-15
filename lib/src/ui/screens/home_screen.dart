@@ -93,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Save Custom Preset'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
@@ -139,6 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: const Text('Rename Device'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
@@ -205,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         final theme = Theme.of(context);
         return AlertDialog(
+          scrollable: true,
           icon: Icon(icon, color: theme.colorScheme.primary, size: 28),
           title: Text(title, textAlign: TextAlign.center),
           content: ConstrainedBox(
