@@ -256,16 +256,26 @@ class MainActivity : FlutterActivity() {
                     socket = s
                     connected = true
                 } catch (e: Exception) {
-                    // Fallback to standard SPP UUID
-                    try {
-                        val sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
-                        val s = device.createInsecureRfcommSocketToServiceRecord(sppUuid)
-                        adapter.cancelDiscovery()
-                        s.connect()
-                        socket = s
-                        connected = true
-                    } catch (e2: Exception) {
-                        throw e2
+                    // Fallback to custom Liesheng SPP UUID and standard SPP UUID
+                    val fallbackUuids = listOf(
+                        UUID.fromString("0000FD3D-0000-1000-8000-00805F9B34FB"),
+                        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
+                    )
+                    var lastErr: Exception? = null
+                    for (uuid in fallbackUuids) {
+                        try {
+                            val s = device.createInsecureRfcommSocketToServiceRecord(uuid)
+                            adapter.cancelDiscovery()
+                            s.connect()
+                            socket = s
+                            connected = true
+                            break
+                        } catch (e2: Exception) {
+                            lastErr = e2
+                        }
+                    }
+                    if (!connected && lastErr != null) {
+                        throw lastErr
                     }
                 }
 
