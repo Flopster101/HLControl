@@ -405,6 +405,24 @@ class HaylouHeadphoneController:
                     return val_bytes[0]
         return None
 
+    def query_anc_level(self):
+        """
+        Queries the current ANC reduction level from config ID 11.
+        """
+        payload = bytes([0x00, 0x0B])
+        resp = self.send_and_receive(OP_READ, 243, payload) # 243 = CMD_GET_DEVICE_CONFIG
+        if resp:
+            op_code, _, _, response_payload = resp
+            has_status = not (op_code & 0x40)
+            configs = parse_config_blocks(response_payload, has_status_byte=has_status)
+            if 11 in configs:
+                val_bytes = configs[11]
+                if len(val_bytes) >= 2:
+                    return val_bytes[1]
+                elif len(val_bytes) >= 1:
+                    return val_bytes[0]
+        return None
+
     def get_status(self):
         status = {}
 
@@ -440,6 +458,10 @@ class HaylouHeadphoneController:
             status['anc_mode'] = ANC_MODES.get(anc_val, f"Unknown ({anc_val})")
         else:
             status['anc_mode'] = "Unknown"
+
+        anc_lvl_val = self.query_anc_level()
+        anc_level_map = {0: "High", 1: "Medium", 2: "Low"}
+        status['anc_level'] = anc_level_map.get(anc_lvl_val, "Unknown" if anc_lvl_val is None else f"Level {anc_lvl_val}")
 
         if ORD_RUN_EQ_MODE in run_attrs:
             eq_val = run_attrs[ORD_RUN_EQ_MODE][0]
@@ -531,6 +553,15 @@ class HaylouHeadphoneController:
             print("Invalid ANC mode specified.")
             return False
         return self.set_setting(ATTR_WRITE_ANC_MODE, mode)
+
+    def set_anc_level(self, level):
+        if level not in [0, 1, 2]:
+            print("Invalid ANC level specified (0=High, 1=Medium, 2=Low).")
+            return False
+        # Config ID 11: payload is [length=4, config_id_hi=0, config_id_lo=11, 1, level]
+        payload = bytes([4, 0, 11, 1, level])
+        resp = self.send_and_receive(OP_READ, 242, payload)
+        return resp is not None
 
     def set_game_mode(self, enable):
         return self.set_setting(ATTR_WRITE_GAME_MODE, 1 if enable else 0)
@@ -761,6 +792,10 @@ def draw_dashboard(status, msg=""):
     }
     anc_col = anc_colors.get(anc, COLOR_UNKNOWN)
     draw_line("ANC Mode", f"{anc_col}{anc}{RESET}")
+
+    if anc in ["ANC On", "Adaptive Auto-ANC"]:
+        anc_lvl = status.get('anc_level', 'Unknown')
+        draw_line("ANC Level", f"{COLOR_VAL}{anc_lvl}{RESET}")
 
     # EQ Preset Display
     eq = status.get('eq_mode', 'Unknown')
@@ -1069,6 +1104,8 @@ def json_mode_loop(controller):
                 with sock_lock:
                     if action == "set_anc":
                         success = controller.set_anc_mode(int(value))
+                    elif action == "set_anc_level":
+                        success = controller.set_anc_level(int(value))
                     elif action == "set_game_mode":
                         success = controller.set_game_mode(bool(value))
                     elif action == "set_wind_noise":
