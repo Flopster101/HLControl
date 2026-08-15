@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _gameMode => widget.headphoneController.status.gameMode ?? false;
   bool get _windNoiseReduction => widget.headphoneController.status.windNoise ?? false;
   bool get _multipoint => widget.headphoneController.status.multipoint ?? false;
+  bool get _ldac => widget.headphoneController.status.ldac ?? false;
 
   String get _spatialAudioMode => widget.headphoneController.status.spatialAudioMode;
   String get _spatialScene => widget.headphoneController.status.spatialScene;
@@ -346,6 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
         status.gameMode != null ||
         status.windNoise != null ||
         status.multipoint != null ||
+        status.ldac != null ||
         isWearSupported ||
         status.spatialAudioMode != 'Unknown';
     return _buildCenteredScrollable(
@@ -1209,6 +1211,22 @@ class _HomeScreenState extends State<HomeScreen> {
         onChanged: _isConnected
             ? (val) {
                 widget.headphoneController.setMultipoint(val);
+              }
+            : null,
+      ));
+    }
+
+    // LDAC High-Resolution Audio
+    if (!_isConnected || status.ldac != null) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.high_quality),
+        title: const Text('LDAC High-Resolution Audio'),
+        subtitle: const Text('High-definition Bluetooth audio codec'),
+        value: _ldac,
+        onChanged: _isConnected
+            ? (val) {
+                widget.headphoneController.setLdac(val);
               }
             : null,
       ));

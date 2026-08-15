@@ -121,6 +121,10 @@ class HeadphoneController extends ChangeNotifier {
     await _service.setMultipoint(enabled);
   }
 
+  Future<void> setLdac(bool enabled) async {
+    await _service.setLdac(enabled);
+  }
+
   Future<void> setWearDetection(bool enabled) async {
     await _service.setWearDetection(enabled);
   }

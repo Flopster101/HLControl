@@ -181,6 +181,7 @@ class LinuxHeadphoneService implements HeadphoneService {
           final gameVal = parseNullableBool(jsonMap['game_mode'] as String?);
           final windVal = parseNullableBool(jsonMap['wind_noise'] as String?);
           final multiVal = parseNullableBool(jsonMap['multipoint'] as String?);
+          final ldacVal = parseNullableBool(jsonMap['ldac'] as String?);
           final wearVal = parseNullableBool(jsonMap['wear_detection'] as String?);
 
           final shutdownStr = jsonMap['auto_shutdown'] as String?;
@@ -213,6 +214,7 @@ class LinuxHeadphoneService implements HeadphoneService {
             gameMode: gameVal,
             windNoise: windVal,
             multipoint: multiVal,
+            ldac: ldacVal,
             wearDetection: wearVal,
             autoShutdownIndex: shutdownIdx,
             spatialAudioMode: spatialStr,
@@ -264,6 +266,11 @@ class LinuxHeadphoneService implements HeadphoneService {
   @override
   Future<void> setMultipoint(bool enabled) async {
     _sendCommand('set_multipoint', enabled);
+  }
+
+  @override
+  Future<void> setLdac(bool enabled) async {
+    _sendCommand('set_ldac', enabled);
   }
 
   @override

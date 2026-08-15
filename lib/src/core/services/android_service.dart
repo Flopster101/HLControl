@@ -390,6 +390,9 @@ class AndroidHeadphoneService implements HeadphoneService {
     if (attrs.containsKey(ordRunMultipoint)) {
       updated = updated.copyWith(multipoint: attrs[ordRunMultipoint]![0] == 1);
     }
+    if (attrs.containsKey(ordRunLdac)) {
+      updated = updated.copyWith(ldac: attrs[ordRunLdac]![0] == 1);
+    }
     if (attrs.containsKey(ordRunWearDetection)) {
       updated = updated.copyWith(wearDetection: attrs[ordRunWearDetection]![0] == 1);
     }
@@ -479,6 +482,11 @@ class AndroidHeadphoneService implements HeadphoneService {
   @override
   Future<void> setMultipoint(bool enabled) async {
     await _writeSetting(9, enabled ? 1 : 0);
+  }
+
+  @override
+  Future<void> setLdac(bool enabled) async {
+    await _writeSetting(8, enabled ? 1 : 0);
   }
 
   @override

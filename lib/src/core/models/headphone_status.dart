@@ -11,6 +11,7 @@ class HeadphoneStatus {
   final bool? gameMode;
   final bool? windNoise;
   final bool? multipoint;
+  final bool? ldac;
   final bool? wearDetection;
   final int? autoShutdownIndex; // 0=30m, 1=1h, 2=3h, 3=5h, 4=Never
   final String spatialAudioMode; // Off, Static, Dynamic
@@ -28,6 +29,7 @@ class HeadphoneStatus {
     this.gameMode,
     this.windNoise,
     this.multipoint,
+    this.ldac,
     this.wearDetection,
     this.autoShutdownIndex,
     required this.spatialAudioMode,
@@ -47,6 +49,7 @@ class HeadphoneStatus {
       gameMode: false,
       windNoise: false,
       multipoint: false,
+      ldac: false,
       wearDetection: false,
       autoShutdownIndex: 4,
       spatialAudioMode: 'Off',
@@ -65,6 +68,7 @@ class HeadphoneStatus {
     bool? gameMode,
     bool? windNoise,
     bool? multipoint,
+    bool? ldac,
     bool? wearDetection,
     int? autoShutdownIndex,
     String? spatialAudioMode,
@@ -82,6 +86,7 @@ class HeadphoneStatus {
       gameMode: gameMode ?? this.gameMode,
       windNoise: windNoise ?? this.windNoise,
       multipoint: multipoint ?? this.multipoint,
+      ldac: ldac ?? this.ldac,
       wearDetection: wearDetection ?? this.wearDetection,
       autoShutdownIndex: autoShutdownIndex ?? this.autoShutdownIndex,
       spatialAudioMode: spatialAudioMode ?? this.spatialAudioMode,

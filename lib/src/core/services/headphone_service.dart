@@ -15,6 +15,7 @@ abstract class HeadphoneService {
   Future<void> setGameMode(bool enabled);
   Future<void> setWindNoise(bool enabled);
   Future<void> setMultipoint(bool enabled);
+  Future<void> setLdac(bool enabled);
   Future<void> setWearDetection(bool enabled);
   Future<void> setAutoShutdown(int timerVal); // Liesheng protocol timer byte (1, 2, 6, 10, 255)
   Future<void> setSpatialAudio(String mode);

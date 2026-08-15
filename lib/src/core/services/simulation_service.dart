@@ -150,6 +150,11 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setLdac(bool enabled) async {
+    _updateStatus(_status.copyWith(ldac: enabled));
+  }
+
+  @override
   Future<void> setWearDetection(bool enabled) async {
     _updateStatus(_status.copyWith(wearDetection: enabled));
   }
