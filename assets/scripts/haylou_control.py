@@ -100,10 +100,10 @@ ANC_MODES = {
 # EQ Presets Mapping for S40 (Read value mapping)
 EQ_PRESETS = {
     0: "Default",
-    1: "Subwoofer",
+    6: "Subwoofer",
     2: "Rock",
-    3: "Soft",
-    4: "Classical",
+    7: "Soft",
+    3: "Classical",
     15: "Custom/Customize",
     240: "Custom/Customize"
 }
@@ -595,14 +595,14 @@ class HaylouHeadphoneController:
         # 1. Try Attribute-based (Attr ID 2, opcode 8)
         self.set_setting(ATTR_WRITE_EQ_MODE, write_val)
         time.sleep(0.15)
-        if self.get_current_eq_preset_val() == preset_idx:
+        if self.get_current_eq_preset_val() == write_val:
             return True
 
         # 2. Fallback to Config-based (Config ID 7, opcode 242)
         payload = bytes([3, 0, 7, write_val])
         self.send_and_receive(OP_READ, 242, payload)
         time.sleep(0.15)
-        if self.get_current_eq_preset_val() == preset_idx:
+        if self.get_current_eq_preset_val() == write_val:
             return True
 
         return False
@@ -939,7 +939,7 @@ def interactive_menu(controller):
             if eq_choice in [str(x) for x in range(5)]:
                 idx = int(eq_choice)
                 success = controller.set_eq_preset(idx)
-                msg = f"EQ Preset updated to {EQ_PRESETS[idx]}." if success else "Failed to update EQ Preset."
+                msg = f"EQ Preset updated to {EQ_PRESETS[EQ_WRITE_MAP[idx]]}." if success else "Failed to update EQ Preset."
             else:
                 msg = "Invalid EQ Preset choice."
         elif choice == "8":
