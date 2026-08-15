@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/controllers/headphone_controller.dart';
 import '../../core/models/bluetooth_device.dart';
 import '../theme/theme_controller.dart';
@@ -87,6 +89,43 @@ class _HomeScreenState extends State<HomeScreen> {
     'Classical': [3.0, 2.0, 1.5, 1.0, -1.0, -1.5, 1.0, 2.0, 2.5, 3.0],
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomPresets();
+  }
+
+  Future<void> _loadCustomPresets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('custom_eq_presets');
+      if (jsonStr != null) {
+        final List<dynamic> decoded = jsonDecode(jsonStr);
+        if (mounted) {
+          setState(() {
+            _customPresets.clear();
+            for (final item in decoded) {
+              if (item is Map) {
+                _customPresets.add({
+                  'name': item['name'] as String,
+                  'values': (item['values'] as List<dynamic>).map((e) => (e as num).toDouble()).toList(),
+                });
+              }
+            }
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveCustomPresetsToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = jsonEncode(_customPresets);
+      await prefs.setString('custom_eq_presets', jsonStr);
+    } catch (_) {}
+  }
+
   void _showSavePresetDialog() {
     if (!_isConnected) return;
     final textController = TextEditingController();
@@ -122,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'values': List<double>.from(_eqValues),
                   });
                 });
+                _saveCustomPresetsToPrefs();
               }
               Navigator.pop(context);
             },
@@ -896,6 +936,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 setState(() {
                                   _customPresets.remove(preset);
                                 });
+                                _saveCustomPresetsToPrefs();
                               }
                             : null,
                         deleteIcon: const Icon(Icons.close, size: 16),
