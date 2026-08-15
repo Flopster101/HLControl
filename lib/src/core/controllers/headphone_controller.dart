@@ -164,6 +164,10 @@ class HeadphoneController extends ChangeNotifier {
     await _service.renameDevice(newName);
   }
 
+  Future<void> findDevice(bool play) async {
+    await _service.findDevice(play);
+  }
+
   Future<void> refreshStatus() async {
     await _service.refreshStatus();
   }

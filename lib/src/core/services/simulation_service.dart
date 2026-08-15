@@ -211,6 +211,9 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> findDevice(bool play) async {}
+
+  @override
   Future<void> refreshStatus() async {}
 
   @override

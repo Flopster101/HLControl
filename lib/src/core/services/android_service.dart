@@ -548,6 +548,12 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> findDevice(bool play) async {
+    // Config ID 9 (opcode 242, opRead): payload is [length=4, config_id_hi=0, config_id_lo=9, play (1 or 0), earbud_id (3=both)]
+    await _writePacket(opRead, 242, Uint8List.fromList([4, 0, 9, play ? 1 : 0, 3]));
+  }
+
+  @override
   Future<void> refreshStatus() async {
     await _queryStatus();
   }

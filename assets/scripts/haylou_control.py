@@ -601,6 +601,15 @@ class HaylouHeadphoneController:
         curr_name = self.query_device_name()
         return curr_name == name
 
+    def find_device(self, is_play=True, earbud_id=3):
+        """
+        Plays or stops the find device ring tone (Config ID 9 / HOP_CONFIG_FIND_EARBUD).
+        earbud_id: 1=Left, 2=Right, 3=Both.
+        """
+        payload = bytes([4, 0, 9, 1 if is_play else 0, earbud_id])
+        self.send_and_receive(OP_READ, 242, payload)
+        return True
+
     def get_current_eq_preset_val(self):
         """
         Queries the active EQ preset value from either run info or config ID 7.
@@ -858,8 +867,8 @@ def print_menu():
     print_col("3", "Toggle Wind Noise", "9", "Set Spatial Audio Scene")
     print_col("4", "Toggle Multipoint", "10", "Set Auto-Shutdown Timer")
     print_col("5", "Toggle LDAC (Reboot)", "11", "Rename Device")
-    print_col("6", "Toggle Wear Detection", "12", "Refresh Status")
-    print(f"{' ' * 19}{COLOR_OFF}[0]{RESET} Disconnect & Exit")
+    print_col("6", "Toggle Wear Detection", "12", "Find My Device (Ring)")
+    print(f"{' ' * 4} [13] Refresh Status {' ' * 8} [0] Disconnect & Exit")
 
 # --- Interactive TUI Loop ---
 
@@ -891,7 +900,7 @@ def interactive_menu(controller):
         print_menu()
 
         try:
-            choice = input(f"\n{BOLD}Select option [0-12]:{RESET} ").strip()
+            choice = input(f"\n{BOLD}Select option [0-13]:{RESET} ").strip()
         except (KeyboardInterrupt, EOFError):
             print()
             break
@@ -960,23 +969,23 @@ def interactive_menu(controller):
             success = controller.set_wear_detection(enable)
             msg = f"Wear Detection {'enabled' if enable else 'disabled'}." if success else "Failed to update Wear Detection."
         elif choice == "7":
-            print("\nSelect EQ Preset:")
-            print(" 0. Default (Flat)")
+            print("\nSelect EQ Preset for Haylou S40:")
+            print(" 0. Default")
             print(" 1. Subwoofer")
             print(" 2. Rock")
             print(" 3. Soft")
             print(" 4. Classical")
             try:
-                eq_choice = input("Select preset [0-4]: ").strip()
+                preset_choice = input("Select preset [0-4]: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print()
                 continue
-            if eq_choice in [str(x) for x in range(5)]:
-                idx = int(eq_choice)
+            if preset_choice in ['0', '1', '2', '3', '4']:
+                idx = int(preset_choice)
                 success = controller.set_eq_preset(idx)
-                msg = f"EQ Preset updated to {EQ_PRESETS[EQ_WRITE_MAP[idx]]}." if success else "Failed to update EQ Preset."
+                msg = f"EQ Preset set to {EQ_NAMES.get(idx, idx)}." if success else "Failed to set EQ Preset."
             else:
-                msg = "Invalid EQ Preset choice."
+                msg = "Invalid preset choice."
         elif choice == "8":
             print("\nSelect Spatial Audio Mode:")
             print(" 0. Off (Close)")
@@ -1053,9 +1062,24 @@ def interactive_menu(controller):
             else:
                 msg = "Device name cannot be empty."
         elif choice == "12":
+            print("\nFind My Device:")
+            print(" 1. Start Ringing Sound")
+            print(" 0. Stop Ringing Sound")
+            try:
+                find_choice = input("Select action [0, 1]: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                continue
+            if find_choice in ['0', '1']:
+                play = (find_choice == '1')
+                success = controller.find_device(is_play=play)
+                msg = f"Find device sound {'started' if play else 'stopped'}." if success else "Failed to send find device command."
+            else:
+                msg = "Invalid find action."
+        elif choice == "13":
             msg = "Status refreshed."
         else:
-            msg = "Invalid option. Please choose [0-12]."
+            msg = "Invalid option. Please choose [0-13]."
 
         time.sleep(0.5)
 
@@ -1139,6 +1163,10 @@ def json_mode_loop(controller):
                         success = controller.set_spatial_scene(int(value))
                     elif action == "set_eq_preset":
                         success = controller.set_eq_preset(int(value))
+                    elif action == "find_device":
+                        play = bool(value) if isinstance(value, bool) else True
+                        earbud_id = int(cmd.get("earbud_id", 3)) if isinstance(cmd, dict) else 3
+                        success = controller.find_device(is_play=play, earbud_id=earbud_id)
                     elif action == "rename":
                         success = controller.set_device_name(str(value))
                     elif action == "get_status":

@@ -22,6 +22,7 @@ abstract class HeadphoneService {
   Future<void> setSpatialScene(int sceneIdx); // 0=Music, 1=Sport, 2=Movie
   Future<void> setEqPreset(int presetIdx); // 0-4
   Future<void> renameDevice(String newName);
+  Future<void> findDevice(bool play);
   Future<void> refreshStatus();
   void dispose();
 }

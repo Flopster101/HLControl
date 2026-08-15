@@ -128,6 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool _isFindingDevice = false;
+
   void _showRenameDialog() {
     if (!_isConnected) return;
     final textController = TextEditingController(text: _deviceName);
@@ -160,6 +162,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _toggleFindDevice() async {
+    if (!_isConnected) return;
+    final newPlaying = !_isFindingDevice;
+    setState(() {
+      _isFindingDevice = newPlaying;
+    });
+    await widget.headphoneController.findDevice(newPlaying);
+    if (mounted && newPlaying) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Ringing headphones... Tap to stop.'),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'STOP',
+            onPressed: () {
+              _toggleFindDevice();
+            },
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -795,6 +820,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: Text(_isConnected ? _deviceName : 'Disconnected'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _isConnected ? _showRenameDialog : null,
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: Icon(_isFindingDevice ? Icons.volume_up : Icons.search),
+                title: const Text('Find My Headset'),
+                subtitle: Text(_isFindingDevice ? 'Ringing active — tap to stop' : 'Play sound tone to locate headphones'),
+                trailing: _isFindingDevice
+                    ? FilledButton.tonal(
+                        onPressed: _isConnected ? _toggleFindDevice : null,
+                        child: const Text('Stop'),
+                      )
+                    : OutlinedButton(
+                        onPressed: _isConnected ? _toggleFindDevice : null,
+                        child: const Text('Ring'),
+                      ),
+                onTap: _isConnected ? _toggleFindDevice : null,
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(

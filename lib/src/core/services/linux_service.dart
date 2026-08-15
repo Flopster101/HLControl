@@ -317,6 +317,11 @@ class LinuxHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> findDevice(bool play) async {
+    _sendCommand('find_device', play);
+  }
+
+  @override
   Future<void> refreshStatus() async {
     _sendCommand('get_status', null);
   }
