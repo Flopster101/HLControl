@@ -130,6 +130,11 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setAncLevel(int level) async {
+    _updateStatus(_status.copyWith(ancIntensity: level));
+  }
+
+  @override
   Future<void> setGameMode(bool enabled) async {
     _updateStatus(_status.copyWith(gameMode: enabled));
   }
@@ -186,6 +191,10 @@ class SimulationHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setEqPreset(int presetIdx) async {
+    if (presetIdx == 15 || presetIdx == 240) {
+      _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
+      return;
+    }
     final List<String> presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
     final presetName = (presetIdx >= 0 && presetIdx < presets.length) ? presets[presetIdx] : 'Default';
     _updateStatus(_status.copyWith(eqPreset: presetName));

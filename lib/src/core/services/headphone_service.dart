@@ -11,6 +11,7 @@ abstract class HeadphoneService {
   Future<List<BluetoothDevice>> scanDevices();
 
   Future<void> setAncMode(int mode); // 0=Normal, 1=ANC, 2=Transparency, 4=Adaptive
+  Future<void> setAncLevel(int level); // 0=High, 1=Medium, 2=Low (Config ID 11)
   Future<void> setGameMode(bool enabled);
   Future<void> setWindNoise(bool enabled);
   Future<void> setMultipoint(bool enabled);

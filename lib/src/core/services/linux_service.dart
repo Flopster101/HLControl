@@ -162,6 +162,15 @@ class LinuxHeadphoneService implements HeadphoneService {
           }
 
           final ancStr = jsonMap['anc_mode'] as String? ?? 'Normal (Off)';
+          final ancLevelStr = jsonMap['anc_level'] as String?;
+          int ancIntensity = _status.ancIntensity;
+          if (ancLevelStr == 'High') {
+            ancIntensity = 0;
+          } else if (ancLevelStr == 'Medium') {
+            ancIntensity = 1;
+          } else if (ancLevelStr == 'Low') {
+            ancIntensity = 2;
+          }
           final eqStr = jsonMap['eq_mode'] as String? ?? 'Default';
 
           bool? parseNullableBool(String? val) {
@@ -199,7 +208,7 @@ class LinuxHeadphoneService implements HeadphoneService {
             deviceName: jsonMap['device_name'] ?? 'HAYLOU S40',
             batteryPercent: batteryVal,
             ancMode: ancStr,
-            ancIntensity: _status.ancIntensity, // preserved locally in UI
+            ancIntensity: ancIntensity,
             eqPreset: eqStr,
             gameMode: gameVal,
             windNoise: windVal,
@@ -235,6 +244,11 @@ class LinuxHeadphoneService implements HeadphoneService {
   @override
   Future<void> setAncMode(int mode) async {
     _sendCommand('set_anc', mode);
+  }
+
+  @override
+  Future<void> setAncLevel(int level) async {
+    _sendCommand('set_anc_level', level);
   }
 
   @override

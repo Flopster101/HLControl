@@ -11,29 +11,29 @@ class AndroidHeadphoneService implements HeadphoneService {
   static const EventChannel _eventChannel = EventChannel('com.flopster101.hlcontrol/bluetooth_events');
 
   // Protocol Constants
-  static const int OP_WRITE = 0x80;
-  static const int OP_READ = 0xC0;
-  static const int OP_RESPONSE = 0x00;
-  static const int OP_NOTIFY = 0x02;
+  static const int opWrite = 0x80;
+  static const int opRead = 0xC0;
+  static const int opResponse = 0x00;
+  static const int opNotify = 0x02;
 
-  static const int CMD_GET_DEVICE_INFO = 2;
-  static const int CMD_SET_DEVICE_INFO = 8;
-  static const int CMD_GET_DEVICE_RUN_INFO = 9;
-  static const int CMD_REPORT_DEVICE_STATUS = 14;
+  static const int cmdGetDeviceInfo = 2;
+  static const int cmdSetDeviceInfo = 8;
+  static const int cmdGetDeviceRunInfo = 9;
+  static const int cmdReportDeviceStatus = 14;
 
-  static const int ORD_RUN_AUTO_SHUTDOWN = 5;
-  static const int ORD_RUN_ANC_STATUS = 9;
-  static const int ORD_RUN_GAME_MODE = 11;
-  static const int ORD_RUN_MULTIPOINT = 17;
-  static const int ORD_RUN_LDAC = 16;
-  static const int ORD_RUN_SPATIAL_AUDIO = 18;
-  static const int ORD_RUN_SPATIAL_SCENE = 19;
-  static const int ORD_RUN_WIND_NOISE = 20;
-  static const int ORD_RUN_WEAR_DETECTION = 21;
-  static const int ORD_RUN_WEAR_STATE = 22;
-  static const int ORD_RUN_EQ_MODE = 12;
+  static const int ordRunAutoShutdown = 5;
+  static const int ordRunAncStatus = 9;
+  static const int ordRunGameMode = 11;
+  static const int ordRunMultipoint = 17;
+  static const int ordRunLdac = 16;
+  static const int ordRunSpatialAudio = 18;
+  static const int ordRunSpatialScene = 19;
+  static const int ordRunWindNoise = 20;
+  static const int ordRunWearDetection = 21;
+  static const int ordRunWearState = 22;
+  static const int ordRunEqMode = 12;
 
-  static const Map<int, String> ANC_MODES = {
+  static const Map<int, String> ancModes = {
     0: "Normal (Off)",
     1: "ANC On",
     2: "Transparency",
@@ -41,7 +41,7 @@ class AndroidHeadphoneService implements HeadphoneService {
     4: "Adaptive Auto-ANC"
   };
 
-  static const Map<int, String> EQ_PRESETS = {
+  static const Map<int, String> eqPresets = {
     0: "Default",
     6: "Subwoofer",
     2: "Rock",
@@ -245,7 +245,7 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   Future<void> _writeSetting(int attrId, int val) async {
     final tlv = buildSettingTlv(attrId, Uint8List.fromList([val]));
-    await _writePacket(OP_WRITE, CMD_SET_DEVICE_INFO, tlv);
+    await _writePacket(opWrite, cmdSetDeviceInfo, tlv);
     await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
@@ -253,12 +253,12 @@ class AndroidHeadphoneService implements HeadphoneService {
   Future<void> _queryStatus() async {
     // 1. Query name (Command 2, Attribute 0 - mask 1)
     final nameMask = Uint8List(4).. [3] = 1;
-    await _writePacket(OP_READ, CMD_GET_DEVICE_INFO, nameMask);
+    await _writePacket(opRead, cmdGetDeviceInfo, nameMask);
     await Future.delayed(const Duration(milliseconds: 150));
 
     // 2. Query battery (Command 2, Attribute 2 - mask 4)
     final batMask = Uint8List(4).. [3] = 4;
-    await _writePacket(OP_READ, CMD_GET_DEVICE_INFO, batMask);
+    await _writePacket(opRead, cmdGetDeviceInfo, batMask);
     await Future.delayed(const Duration(milliseconds: 150));
 
     // 3. Query run info (Command 9, combined mask)
@@ -268,11 +268,15 @@ class AndroidHeadphoneService implements HeadphoneService {
     maskBytes[1] = (combinedMask >> 16) & 0xFF;
     maskBytes[2] = (combinedMask >> 8) & 0xFF;
     maskBytes[3] = combinedMask & 0xFF;
-    await _writePacket(OP_READ, CMD_GET_DEVICE_RUN_INFO, maskBytes);
+    await _writePacket(opRead, cmdGetDeviceRunInfo, maskBytes);
     await Future.delayed(const Duration(milliseconds: 150));
 
     // 4. Query EQ Preset (Command 243, config 7)
-    await _writePacket(OP_READ, 243, Uint8List.fromList([0x00, 0x07]));
+    await _writePacket(opRead, 243, Uint8List.fromList([0x00, 0x07]));
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    // 5. Query ANC Level (Command 243, config 11)
+    await _writePacket(opRead, 243, Uint8List.fromList([0x00, 0x0B]));
   }
 
   void _handleIncomingBytes(List<int> bytes) {
@@ -340,10 +344,10 @@ class AndroidHeadphoneService implements HeadphoneService {
   void _processPacket(int opCode, int cmdId, int seqSn, Uint8List payload) {
     final hasStatus = (opCode & 0x40) == 0;
 
-    if (cmdId == CMD_GET_DEVICE_RUN_INFO || cmdId == CMD_REPORT_DEVICE_STATUS) {
+    if (cmdId == cmdGetDeviceRunInfo || cmdId == cmdReportDeviceStatus) {
       final attrs = parseTlvBlocks(payload, hasStatusByte: hasStatus);
       _updateStatusFromAttrs(attrs);
-    } else if (cmdId == CMD_GET_DEVICE_INFO) {
+    } else if (cmdId == cmdGetDeviceInfo) {
       final attrs = parseTlvBlocks(payload, hasStatusByte: hasStatus);
       _updateDeviceInfoFromAttrs(attrs);
     } else if (cmdId == 243) {
@@ -351,8 +355,16 @@ class AndroidHeadphoneService implements HeadphoneService {
       if (configs.containsKey(7)) {
         final val = configs[7]!;
         if (val.isNotEmpty) {
-          final eqStr = EQ_PRESETS[val[0]] ?? 'Default';
+          final eqStr = eqPresets[val[0]] ?? 'Default';
           _updateStatus(_status.copyWith(eqPreset: eqStr));
+        }
+      }
+      if (configs.containsKey(11)) {
+        final val = configs[11]!;
+        if (val.length >= 2) {
+          _updateStatus(_status.copyWith(ancIntensity: val[1]));
+        } else if (val.isNotEmpty) {
+          _updateStatus(_status.copyWith(ancIntensity: val[0]));
         }
       }
     }
@@ -361,28 +373,28 @@ class AndroidHeadphoneService implements HeadphoneService {
   void _updateStatusFromAttrs(Map<int, Uint8List> attrs) {
     var updated = _status.copyWith(isConnected: true, isConnecting: false);
 
-    if (attrs.containsKey(ORD_RUN_ANC_STATUS)) {
-      final val = attrs[ORD_RUN_ANC_STATUS]![0];
-      updated = updated.copyWith(ancMode: ANC_MODES[val] ?? 'Unknown');
+    if (attrs.containsKey(ordRunAncStatus)) {
+      final val = attrs[ordRunAncStatus]![0];
+      updated = updated.copyWith(ancMode: ancModes[val] ?? 'Unknown');
     }
-    if (attrs.containsKey(ORD_RUN_EQ_MODE)) {
-      final val = attrs[ORD_RUN_EQ_MODE]![0];
-      updated = updated.copyWith(eqPreset: EQ_PRESETS[val] ?? 'Default');
+    if (attrs.containsKey(ordRunEqMode)) {
+      final val = attrs[ordRunEqMode]![0];
+      updated = updated.copyWith(eqPreset: eqPresets[val] ?? 'Default');
     }
-    if (attrs.containsKey(ORD_RUN_GAME_MODE)) {
-      updated = updated.copyWith(gameMode: attrs[ORD_RUN_GAME_MODE]![0] == 1);
+    if (attrs.containsKey(ordRunGameMode)) {
+      updated = updated.copyWith(gameMode: attrs[ordRunGameMode]![0] == 1);
     }
-    if (attrs.containsKey(ORD_RUN_WIND_NOISE)) {
-      updated = updated.copyWith(windNoise: attrs[ORD_RUN_WIND_NOISE]![0] == 1);
+    if (attrs.containsKey(ordRunWindNoise)) {
+      updated = updated.copyWith(windNoise: attrs[ordRunWindNoise]![0] == 1);
     }
-    if (attrs.containsKey(ORD_RUN_MULTIPOINT)) {
-      updated = updated.copyWith(multipoint: attrs[ORD_RUN_MULTIPOINT]![0] == 1);
+    if (attrs.containsKey(ordRunMultipoint)) {
+      updated = updated.copyWith(multipoint: attrs[ordRunMultipoint]![0] == 1);
     }
-    if (attrs.containsKey(ORD_RUN_WEAR_DETECTION)) {
-      updated = updated.copyWith(wearDetection: attrs[ORD_RUN_WEAR_DETECTION]![0] == 1);
+    if (attrs.containsKey(ordRunWearDetection)) {
+      updated = updated.copyWith(wearDetection: attrs[ordRunWearDetection]![0] == 1);
     }
-    if (attrs.containsKey(ORD_RUN_AUTO_SHUTDOWN)) {
-      final val = attrs[ORD_RUN_AUTO_SHUTDOWN]![0];
+    if (attrs.containsKey(ordRunAutoShutdown)) {
+      final val = attrs[ordRunAutoShutdown]![0];
       int? shutdownIdx;
       if (val == 1) {
         shutdownIdx = 0;
@@ -397,8 +409,8 @@ class AndroidHeadphoneService implements HeadphoneService {
       }
       updated = updated.copyWith(autoShutdownIndex: shutdownIdx);
     }
-    if (attrs.containsKey(ORD_RUN_SPATIAL_AUDIO)) {
-      final val = attrs[ORD_RUN_SPATIAL_AUDIO]![0];
+    if (attrs.containsKey(ordRunSpatialAudio)) {
+      final val = attrs[ordRunSpatialAudio]![0];
       String spatialMode = 'Off';
       if (val == 0) {
         spatialMode = 'Dynamic';
@@ -409,8 +421,8 @@ class AndroidHeadphoneService implements HeadphoneService {
       }
       updated = updated.copyWith(spatialAudioMode: spatialMode);
     }
-    if (attrs.containsKey(ORD_RUN_SPATIAL_SCENE)) {
-      final val = attrs[ORD_RUN_SPATIAL_SCENE]![0];
+    if (attrs.containsKey(ordRunSpatialScene)) {
+      final val = attrs[ordRunSpatialScene]![0];
       String scene = 'Music';
       if (val == 0) {
         scene = 'Music';
@@ -444,6 +456,14 @@ class AndroidHeadphoneService implements HeadphoneService {
   @override
   Future<void> setAncMode(int mode) async {
     await _writeSetting(4, mode);
+  }
+
+  @override
+  Future<void> setAncLevel(int level) async {
+    // Config ID 11 (opcode 242, opRead): payload is [length=4, config_id_hi=0, config_id_lo=11, 1, level]
+    await _writePacket(opRead, 242, Uint8List.fromList([4, 0, 11, 1, level]));
+    await Future.delayed(const Duration(milliseconds: 150));
+    await _queryStatus();
   }
 
   @override
@@ -497,10 +517,12 @@ class AndroidHeadphoneService implements HeadphoneService {
       case 2: writeVal = 2; break;
       case 3: writeVal = 7; break;
       case 4: writeVal = 3; break;
-      default: writeVal = 0;
+      case 15:
+      case 240: writeVal = 240; break;
+      default: writeVal = presetIdx;
     }
-    // S40 EQ preset uses config ID 7 (opcode 242, OP_READ)
-    await _writePacket(OP_READ, 242, Uint8List.fromList([3, 0, 7, writeVal]));
+    // S40 EQ preset uses config ID 7 (opcode 242, opRead)
+    await _writePacket(opRead, 242, Uint8List.fromList([3, 0, 7, writeVal]));
     await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
@@ -513,7 +535,7 @@ class AndroidHeadphoneService implements HeadphoneService {
     payload.addByte(0);
     payload.addByte(8);
     payload.add(nameBytes);
-    await _writePacket(OP_WRITE, 242, payload.toBytes());
+    await _writePacket(opWrite, 242, payload.toBytes());
     await _queryStatus();
   }
 

@@ -105,6 +105,10 @@ class HeadphoneController extends ChangeNotifier {
     await _service.setAncMode(mode);
   }
 
+  Future<void> setAncLevel(int level) async {
+    await _service.setAncLevel(level);
+  }
+
   Future<void> setGameMode(bool enabled) async {
     await _service.setGameMode(enabled);
   }
