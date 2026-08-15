@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Normal';
   }
 
-  int _selectedAncIntensity = 0; // preserved locally for UI purposes
+  int get _selectedAncIntensity => widget.headphoneController.status.ancIntensity;
 
   String get _selectedEqPreset => widget.headphoneController.status.eqPreset;
 
@@ -540,11 +540,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
                 selected: {_selectedAncIntensity},
-                onSelectionChanged: (newSelection) {
-                  setState(() {
-                    _selectedAncIntensity = newSelection.first;
-                  });
-                },
+                onSelectionChanged: _isConnected
+                    ? (newSelection) {
+                        widget.headphoneController.setAncLevel(newSelection.first);
+                      }
+                    : null,
               ),
             ),
           ],
