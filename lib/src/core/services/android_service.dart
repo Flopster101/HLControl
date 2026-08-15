@@ -43,10 +43,14 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   static const Map<int, String> eqPresets = {
     0: "Default",
-    6: "Subwoofer",
+    1: "Vocal",
     2: "Rock",
-    7: "Soft",
     3: "Classical",
+    4: "Popularity",
+    5: "Bass",
+    6: "Subwoofer",
+    7: "Soft",
+    8: "Custom/Customize",
     15: "Custom/Customize",
     240: "Custom/Customize"
   };
@@ -355,8 +359,10 @@ class AndroidHeadphoneService implements HeadphoneService {
       if (configs.containsKey(7)) {
         final val = configs[7]!;
         if (val.isNotEmpty) {
-          final eqStr = eqPresets[val[0]] ?? 'Default';
-          _updateStatus(_status.copyWith(eqPreset: eqStr));
+          final eqStr = eqPresets[val[0]];
+          if (eqStr != null) {
+            _updateStatus(_status.copyWith(eqPreset: eqStr));
+          }
         }
       }
       if (configs.containsKey(11)) {
@@ -379,7 +385,10 @@ class AndroidHeadphoneService implements HeadphoneService {
     }
     if (attrs.containsKey(ordRunEqMode)) {
       final val = attrs[ordRunEqMode]![0];
-      updated = updated.copyWith(eqPreset: eqPresets[val] ?? 'Default');
+      final eqStr = eqPresets[val];
+      if (eqStr != null) {
+        updated = updated.copyWith(eqPreset: eqStr);
+      }
     }
     if (attrs.containsKey(ordRunGameMode)) {
       updated = updated.copyWith(gameMode: attrs[ordRunGameMode]![0] == 1);
@@ -414,15 +423,15 @@ class AndroidHeadphoneService implements HeadphoneService {
     }
     if (attrs.containsKey(ordRunSpatialAudio)) {
       final val = attrs[ordRunSpatialAudio]![0];
-      String spatialMode = 'Off';
+      String mode = 'Off';
       if (val == 0) {
-        spatialMode = 'Dynamic';
+        mode = 'Dynamic (Tracking)';
       } else if (val == 1) {
-        spatialMode = 'Static';
+        mode = 'Static (Surround)';
       } else if (val == 2) {
-        spatialMode = 'Off';
+        mode = 'Off';
       }
-      updated = updated.copyWith(spatialAudioMode: spatialMode);
+      updated = updated.copyWith(spatialAudioMode: mode);
     }
     if (attrs.containsKey(ordRunSpatialScene)) {
       final val = attrs[ordRunSpatialScene]![0];
@@ -441,20 +450,21 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   void _updateDeviceInfoFromAttrs(Map<int, Uint8List> attrs) {
-    var updated = _status.copyWith(isConnected: true, isConnecting: false);
-
-    if (attrs.containsKey(0)) { // Attribute 0 is Name
-      final name = utf8.decode(attrs[0]!, allowMalformed: true).trim().replaceAll('\x00', '');
-      if (name.isNotEmpty) {
-        updated = updated.copyWith(deviceName: name);
+    var updated = _status;
+    if (attrs.containsKey(0)) {
+      final nameBytes = attrs[0]!;
+      updated = updated.copyWith(deviceName: utf8.decode(nameBytes, allowMalformed: true));
+    }
+    if (attrs.containsKey(2)) {
+      final batBytes = attrs[2]!;
+      if (batBytes.isNotEmpty) {
+        updated = updated.copyWith(batteryPercent: batBytes[0]);
       }
     }
-    if (attrs.containsKey(2)) { // Attribute 2 is Battery
-      updated = updated.copyWith(batteryPercent: attrs[2]![0]);
-    }
-
     _updateStatus(updated);
   }
+
+  // --- HeadphoneService API Implementations ---
 
   @override
   Future<void> setAncMode(int mode) async {
@@ -471,7 +481,7 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setGameMode(bool enabled) async {
-    await _writeSetting(5, enabled ? 1 : 0);
+    await _writeSetting(1, enabled ? 1 : 0);
   }
 
   @override
@@ -519,16 +529,18 @@ class AndroidHeadphoneService implements HeadphoneService {
   @override
   Future<void> setEqPreset(int presetIdx) async {
     int writeVal;
+    String presetName;
     switch (presetIdx) {
-      case 0: writeVal = 0; break;
-      case 1: writeVal = 6; break;
-      case 2: writeVal = 2; break;
-      case 3: writeVal = 7; break;
-      case 4: writeVal = 3; break;
+      case 0: writeVal = 0; presetName = 'Default'; break;
+      case 1: writeVal = 6; presetName = 'Subwoofer'; break;
+      case 2: writeVal = 2; presetName = 'Rock'; break;
+      case 3: writeVal = 7; presetName = 'Soft'; break;
+      case 4: writeVal = 3; presetName = 'Classical'; break;
       case 15:
-      case 240: writeVal = 240; break;
-      default: writeVal = presetIdx;
+      case 240: writeVal = 240; presetName = 'Custom/Customize'; break;
+      default: writeVal = presetIdx; presetName = eqPresets[presetIdx] ?? 'Default';
     }
+    _updateStatus(_status.copyWith(eqPreset: presetName));
     // S40 EQ preset uses config ID 7 (opcode 242, opRead)
     await _writePacket(opRead, 242, Uint8List.fromList([3, 0, 7, writeVal]));
     await Future.delayed(const Duration(milliseconds: 150));
@@ -537,6 +549,8 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setCustomEq(List<double> gains) async {
+    _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
+
     const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
     final items = <String>[];
     for (int i = 0; i < frequencies.length; i++) {

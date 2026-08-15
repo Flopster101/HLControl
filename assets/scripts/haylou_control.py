@@ -100,10 +100,14 @@ ANC_MODES = {
 # EQ Presets Mapping for S40 (Read value mapping)
 EQ_PRESETS = {
     0: "Default",
-    6: "Subwoofer",
+    1: "Vocal",
     2: "Rock",
-    7: "Soft",
     3: "Classical",
+    4: "Popularity",
+    5: "Bass",
+    6: "Subwoofer",
+    7: "Soft",
+    8: "Custom/Customize",
     15: "Custom/Customize",
     240: "Custom/Customize"
 }
