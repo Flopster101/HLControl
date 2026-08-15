@@ -43,10 +43,10 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   static const Map<int, String> EQ_PRESETS = {
     0: "Default",
-    1: "Subwoofer",
+    6: "Subwoofer",
     2: "Rock",
-    3: "Soft",
-    4: "Classical",
+    7: "Soft",
+    3: "Classical",
     15: "Custom/Customize",
     240: "Custom/Customize"
   };
@@ -499,7 +499,10 @@ class AndroidHeadphoneService implements HeadphoneService {
       case 4: writeVal = 3; break;
       default: writeVal = 0;
     }
-    await _writeSetting(2, writeVal);
+    // S40 EQ preset uses config ID 7 (opcode 242, OP_READ)
+    await _writePacket(OP_READ, 242, Uint8List.fromList([3, 0, 7, writeVal]));
+    await Future.delayed(const Duration(milliseconds: 150));
+    await _queryStatus();
   }
 
   @override
