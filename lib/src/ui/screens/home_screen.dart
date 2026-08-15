@@ -187,6 +187,163 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showRebootWarningDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    IconData icon = Icons.restart_alt,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          icon: Icon(icon, color: theme.colorScheme.primary, size: 28),
+          title: Text(title, textAlign: TextAlign.center),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message,
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'The headphones will disconnect and restart (~3–5 sec) to apply changes.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onConfirm();
+              },
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _handleLdacChanged(bool val) {
+    if (!_isConnected) return;
+    if (val) {
+      final List<String> conflicts = [];
+      if (_multipoint) conflicts.add('Multipoint Connection');
+      if (_gameMode) conflicts.add('Game Mode');
+      if (_spatialAudioMode != 'Off') conflicts.add('Spatial Audio');
+
+      String explanation = 'Enabling LDAC high-resolution audio provides maximum audio fidelity (up to 990 kbps).';
+      if (conflicts.isNotEmpty) {
+        explanation += '\n\nNote: LDAC cannot run simultaneously with ${conflicts.join(', ')}. Enabling LDAC will turn off ${conflicts.join(' and ')}.';
+      }
+
+      _showRebootWarningDialog(
+        title: 'Enable LDAC Audio Codec?',
+        message: explanation,
+        confirmLabel: 'Enable & Restart',
+        icon: Icons.high_quality,
+        onConfirm: () {
+          widget.headphoneController.setLdac(true);
+        },
+      );
+    } else {
+      _showRebootWarningDialog(
+        title: 'Disable LDAC Audio Codec?',
+        message: 'Disabling LDAC will switch streaming back to standard audio codecs (AAC/SBC).',
+        confirmLabel: 'Disable & Restart',
+        icon: Icons.high_quality,
+        onConfirm: () {
+          widget.headphoneController.setLdac(false);
+        },
+      );
+    }
+  }
+
+  void _handleMultipointChanged(bool val) {
+    if (!_isConnected) return;
+    if (val && _ldac) {
+      _showRebootWarningDialog(
+        title: 'Enable Multipoint Connection?',
+        message: 'Multipoint (Dual-Device Connection) cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Multipoint will disable LDAC.',
+        confirmLabel: 'Turn Off LDAC & Enable',
+        icon: Icons.link,
+        onConfirm: () {
+          widget.headphoneController.setMultipoint(true);
+        },
+      );
+    } else {
+      widget.headphoneController.setMultipoint(val);
+    }
+  }
+
+  void _handleGameModeChanged(bool val) {
+    if (!_isConnected) return;
+    if (val && _ldac) {
+      _showRebootWarningDialog(
+        title: 'Enable Game Mode?',
+        message: 'Low-latency Game Mode cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Game Mode will disable LDAC.',
+        confirmLabel: 'Turn Off LDAC & Enable',
+        icon: Icons.sports_esports,
+        onConfirm: () {
+          widget.headphoneController.setGameMode(true);
+        },
+      );
+    } else {
+      widget.headphoneController.setGameMode(val);
+    }
+  }
+
+  void _handleSpatialAudioChanged(String mode) {
+    if (!_isConnected) return;
+    if (mode != 'Off' && _ldac) {
+      _showRebootWarningDialog(
+        title: 'Enable Spatial Audio ($mode)?',
+        message: 'Spatial Audio DSP processing cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Spatial Audio will disable LDAC.',
+        confirmLabel: 'Turn Off LDAC & Enable',
+        icon: Icons.spatial_audio,
+        onConfirm: () {
+          widget.headphoneController.setSpatialAudio(mode);
+        },
+      );
+    } else {
+      widget.headphoneController.setSpatialAudio(mode);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1217,11 +1374,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Game Mode'),
         subtitle: const Text('Low-latency audio channel'),
         value: _gameMode,
-        onChanged: _isConnected
-            ? (val) {
-                widget.headphoneController.setGameMode(val);
-              }
-            : null,
+        onChanged: _isConnected ? _handleGameModeChanged : null,
       ));
     }
 
@@ -1249,11 +1402,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Multipoint Connection'),
         subtitle: const Text('Dual simultaneous device connections'),
         value: _multipoint,
-        onChanged: _isConnected
-            ? (val) {
-                widget.headphoneController.setMultipoint(val);
-              }
-            : null,
+        onChanged: _isConnected ? _handleMultipointChanged : null,
       ));
     }
 
@@ -1265,11 +1414,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('LDAC High-Resolution Audio'),
         subtitle: const Text('High-definition Bluetooth audio codec'),
         value: _ldac,
-        onChanged: _isConnected
-            ? (val) {
-                widget.headphoneController.setLdac(val);
-              }
-            : null,
+        onChanged: _isConnected ? _handleLdacChanged : null,
       ));
     }
 
@@ -1355,8 +1500,7 @@ class _HomeScreenState extends State<HomeScreen> {
               selected: {_spatialAudioMode},
               onSelectionChanged: _isConnected
                   ? (newSelection) {
-                      final mode = newSelection.first;
-                      widget.headphoneController.setSpatialAudio(mode);
+                      _handleSpatialAudioChanged(newSelection.first);
                     }
                   : null,
             ),
