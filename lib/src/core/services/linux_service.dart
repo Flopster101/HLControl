@@ -312,6 +312,11 @@ class LinuxHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setCustomEq(List<double> gains) async {
+    _sendCommand('set_custom_eq', gains);
+  }
+
+  @override
   Future<void> renameDevice(String newName) async {
     _sendCommand('rename', newName);
   }

@@ -206,6 +206,11 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setCustomEq(List<double> gains) async {
+    _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
+  }
+
+  @override
   Future<void> renameDevice(String newName) async {
     _updateStatus(_status.copyWith(deviceName: newName));
   }

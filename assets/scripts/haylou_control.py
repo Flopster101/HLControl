@@ -647,6 +647,29 @@ class HaylouHeadphoneController:
 
         return False
 
+    def set_custom_eq(self, gains):
+        """
+        Builds the 10-band custom EQ payload, sends it via Opcode 18 (file transfer),
+        and switches EQ mode to CUSTOMIZE (240 / 0xF0).
+        gains: list of 10 float values representing gains in dB (e.g. [-12.0 .. +12.0]).
+        """
+        frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+        items = []
+        for i, freq in enumerate(frequencies):
+            g = float(gains[i]) if i < len(gains) else 0.0
+            items.append(f"1,{g:.1f},{freq},1.0")
+        line = f"0.0,0.0,{len(frequencies)}," + ",".join(items) + ","
+        eq_file_str = f"{line}\n{line}"
+        file_bytes = eq_file_str.encode('utf-8')
+        file_len = len(file_bytes)
+
+        params_data = bytes([(file_len >> 8) & 0xFF, file_len & 0xFF, 0x01]) + file_bytes
+        self.send_and_receive(OP_WRITE, 18, params_data)
+        time.sleep(0.15)
+
+        # Activate CUSTOMIZE (240 / 0xF0)
+        return self.set_eq_preset(240)
+
 # --- Automatic Device Discovery & Port Probing ---
 
 def scan_paired_devices():
@@ -1163,6 +1186,9 @@ def json_mode_loop(controller):
                         success = controller.set_spatial_scene(int(value))
                     elif action == "set_eq_preset":
                         success = controller.set_eq_preset(int(value))
+                    elif action == "set_custom_eq":
+                        gains = value if isinstance(value, list) else (cmd.get("gains", []) if isinstance(cmd, dict) else [])
+                        success = controller.set_custom_eq(gains)
                     elif action == "find_device":
                         play = bool(value) if isinstance(value, bool) else True
                         earbud_id = int(cmd.get("earbud_id", 3)) if isinstance(cmd, dict) else 3

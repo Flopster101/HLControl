@@ -21,6 +21,7 @@ abstract class HeadphoneService {
   Future<void> setSpatialAudio(String mode);
   Future<void> setSpatialScene(int sceneIdx); // 0=Music, 1=Sport, 2=Movie
   Future<void> setEqPreset(int presetIdx); // 0-4
+  Future<void> setCustomEq(List<double> gains); // 10 frequency band gains in dB
   Future<void> renameDevice(String newName);
   Future<void> findDevice(bool play);
   Future<void> refreshStatus();

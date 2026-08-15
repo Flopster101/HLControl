@@ -536,6 +536,33 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setCustomEq(List<double> gains) async {
+    const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    final items = <String>[];
+    for (int i = 0; i < frequencies.length; i++) {
+      final g = i < gains.length ? gains[i] : 0.0;
+      items.add('1,${g.toStringAsFixed(1)},${frequencies[i]},1.0');
+    }
+    final line = '0.0,0.0,${frequencies.length},${items.join(',')},';
+    final eqFileStr = '$line\n$line';
+    final fileBytes = utf8.encode(eqFileStr);
+    final fileLen = fileBytes.length;
+
+    final paramsData = BytesBuilder();
+    paramsData.addByte((fileLen >> 8) & 0xFF);
+    paramsData.addByte(fileLen & 0xFF);
+    paramsData.addByte(0x01);
+    paramsData.add(fileBytes);
+
+    // Opcode 18 (BtSendFile2DevRequest), write
+    await _writePacket(opWrite, 18, paramsData.toBytes());
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    // Activate CUSTOMIZE preset (Config ID 7 -> 240 / 0xF0)
+    await setEqPreset(240);
+  }
+
+  @override
   Future<void> renameDevice(String newName) async {
     final nameBytes = utf8.encode(newName);
     final payload = BytesBuilder();

@@ -160,6 +160,10 @@ class HeadphoneController extends ChangeNotifier {
     await _service.setEqPreset(presetIdx);
   }
 
+  Future<void> setCustomEq(List<double> gains) async {
+    await _service.setCustomEq(gains);
+  }
+
   Future<void> renameDevice(String newName) async {
     await _service.renameDevice(newName);
   }
