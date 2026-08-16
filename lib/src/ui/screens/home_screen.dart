@@ -448,38 +448,22 @@ class _HomeScreenState extends State<HomeScreen> {
             final isWide = constraints.maxWidth > 650;
 
             return Scaffold(
-              appBar: isWide
-                  ? null // Hide appBar on desktop because Sidebar has the title header
-                  : AppBar(
-                      title: const Text('HL Control'),
-                      elevation: 0,
-                    ),
               body: isWide
                   ? Row(
                       children: [
                         _buildSidebar(theme),
                         const VerticalDivider(thickness: 1, width: 1),
                         Expanded(
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 600),
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                child: _buildCurrentTabContent(theme),
-                              ),
-                            ),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            child: _buildCurrentTabContent(theme, isWide: true),
                           ),
                         ),
                       ],
                     )
-                  : Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 600),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: _buildCurrentTabContent(theme),
-                        ),
-                      ),
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: _buildCurrentTabContent(theme, isWide: false),
                     ),
               bottomNavigationBar: isWide
                   ? null
@@ -582,39 +566,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCurrentTabContent(ThemeData theme) {
+  Widget _buildCurrentTabContent(ThemeData theme, {required bool isWide}) {
     switch (_currentTab) {
       case 0:
-        return _buildControlTab(theme);
+        return _buildControlTab(theme, isWide: isWide);
       case 1:
-        return _buildEqualizerTab(theme);
+        return _buildEqualizerTab(theme, isWide: isWide);
       case 2:
-        return _buildSettingsTab(theme);
+        return _buildSettingsTab(theme, isWide: isWide);
       default:
-        return _buildControlTab(theme);
+        return _buildControlTab(theme, isWide: isWide);
     }
   }
 
   Widget _buildCenteredScrollable({
     required Key key,
+    required String title,
+    List<Widget>? actions,
     required List<Widget> children,
     required EdgeInsetsGeometry padding,
+    required bool isWide,
   }) {
-    return Center(
-      child: SingleChildScrollView(
-        key: key,
-        padding: padding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
+    return CustomScrollView(
+      key: key,
+      slivers: [
+        if (!isWide)
+          SliverAppBar.large(
+            title: Text(title),
+            pinned: true,
+            scrolledUnderElevation: 3.0,
+            actions: actions,
+          ),
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Padding(
+                padding: padding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   // --- CONTROL TAB ---
-  Widget _buildControlTab(ThemeData theme) {
+  Widget _buildControlTab(ThemeData theme, {required bool isWide}) {
     final status = widget.headphoneController.status;
     final isWearSupported = !_isOverEar && status.wearDetection != null;
     final hasAudioFeatures = !_isConnected ||
@@ -626,6 +629,16 @@ class _HomeScreenState extends State<HomeScreen> {
         status.spatialAudioMode != 'Unknown';
     return _buildCenteredScrollable(
       key: const ValueKey(0),
+      title: 'HL Control',
+      isWide: isWide,
+      actions: [
+        if (!_isConnected)
+          IconButton(
+            icon: const Icon(Icons.bluetooth_searching),
+            tooltip: 'Connect Device',
+            onPressed: _connectDevice,
+          ),
+      ],
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
         _buildConnectionBanner(theme),
@@ -896,10 +909,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- EQUALIZER TAB ---
-  // --- EQUALIZER TAB ---
-  Widget _buildEqualizerTab(ThemeData theme) {
+  Widget _buildEqualizerTab(ThemeData theme, {required bool isWide}) {
     return _buildCenteredScrollable(
       key: const ValueKey(1),
+      title: 'Equalizer',
+      isWide: isWide,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
         _buildSectionHeader(theme, 'Select Preset'),
@@ -1158,9 +1172,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- SETTINGS TAB ---
-  Widget _buildSettingsTab(ThemeData theme) {
+  Widget _buildSettingsTab(ThemeData theme, {required bool isWide}) {
     return _buildCenteredScrollable(
       key: const ValueKey(2),
+      title: 'Settings',
+      isWide: isWide,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
         _buildSectionHeader(theme, 'Device Settings'),
