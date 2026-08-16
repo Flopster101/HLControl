@@ -29,7 +29,9 @@ class TrayService with TrayListener {
       await windowManager.ensureInitialized();
       trayManager.addListener(this);
 
-      const iconPath = 'assets/images/tray_headphones.png';
+      final iconPath = defaultTargetPlatform == TargetPlatform.windows
+          ? 'assets/images/tray_headphones.ico'
+          : 'assets/images/tray_headphones.png';
       await trayManager.setIcon(iconPath);
       if (defaultTargetPlatform == TargetPlatform.windows) {
         try {
