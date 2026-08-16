@@ -23,9 +23,10 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-Write-Host "==> Installing Git & Flutter SDK..."
+Write-Host "==> Installing Git, Flutter SDK & Inno Setup..."
 choco install -y git --no-progress
 choco install -y flutter --no-progress
+choco install -y innosetup --no-progress
 
 Write-Host "==> Installing Visual Studio 2022 C++ Build Tools & Windows SDK..."
 $vsInstallerUrl = "https://aka.ms/vs/17/release/vs_BuildTools.exe"

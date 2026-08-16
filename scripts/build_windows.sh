@@ -44,10 +44,12 @@ if [ "$IS_RELEASE" = true ]; then
     echo "  Building HLControl Windows [RELEASE: v${VERSION}]"
     DART_DEFINES="--dart-define=APP_VERSION=${VERSION}"
     ZIP_NAME="HLControl-v${VERSION}-windows-x64.zip"
+    SETUP_BASE="HLControl-v${VERSION}-windows-x64-setup"
 else
     echo "  Building HLControl Windows [DEV: v${VERSION}-${GIT_HASH}]"
     DART_DEFINES="--dart-define=APP_VERSION=${VERSION} --dart-define=GIT_HASH=${GIT_HASH} --dart-define=GIT_BRANCH=${GIT_BRANCH}"
     ZIP_NAME="HLControl-v${VERSION}-${GIT_HASH}-windows-x64.zip"
+    SETUP_BASE="HLControl-v${VERSION}-${GIT_HASH}-windows-x64-setup"
 fi
 echo "========================================="
 
@@ -62,8 +64,18 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
         cd "$OUTPUT_DIR"
         zip -r "${ROOT_DIR}/dist/${ZIP_NAME}" *
         cd "${ROOT_DIR}"
+
+        ISCC_PATH="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+        if [ -f "$ISCC_PATH" ]; then
+            "$ISCC_PATH" "/DAppVersion=${VERSION}" "/DAppArch=x64" "/DBuildDir=${ROOT_DIR}/${OUTPUT_DIR}" "/DOutputDir=${ROOT_DIR}/dist" "/DOutputBaseFilename=${SETUP_BASE}" "${ROOT_DIR}/packaging/windows/inno_setup.iss"
+        fi
+
         echo "========================================="
-        echo "  BUILD SUCCESSFUL: dist/${ZIP_NAME}"
+        echo "  BUILD SUCCESSFUL"
+        echo "  - ZIP Package: dist/${ZIP_NAME}"
+        if [ -f "${ROOT_DIR}/dist/${SETUP_BASE}.exe" ]; then
+            echo "  - Installer:   dist/${SETUP_BASE}.exe"
+        fi
         echo "========================================="
     fi
 else
@@ -123,20 +135,36 @@ else
         New-Item -ItemType Directory -Path C:\vagrant\dist -Force | Out-Null
         Set-Location 'C:\vagrant\build\windows\x64\runner\Release'
         & tar.exe -a -c -f 'C:\vagrant\dist\\${ZIP_NAME}' *
+
+        \$IsccPath = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+        if (-not (Test-Path \$IsccPath)) {
+            if (Get-Command choco -ErrorAction SilentlyContinue) {
+                choco install -y innosetup --no-progress
+            }
+        }
+        if (Test-Path \$IsccPath) {
+            Write-Host '==> Compiling Inno Setup installer...'
+            & \$IsccPath '/DAppVersion=${VERSION}' '/DAppArch=x64' '/DBuildDir=C:\vagrant\build\windows\x64\runner\Release' '/DOutputDir=C:\vagrant\dist' '/DOutputBaseFilename=${SETUP_BASE}' 'C:\vagrant\packaging\windows\inno_setup.iss'
+        }
+
+        if (Test-Path 'C:\vagrant\artifacts.zip') { Remove-Item 'C:\vagrant\artifacts.zip' -Force }
+        Compress-Archive -Path 'C:\vagrant\dist\*' -DestinationPath 'C:\vagrant\artifacts.zip' -Force
     "
 
-    echo "==> Pulling artifact to host dist/${ZIP_NAME}..."
-    rm -f "dist/${ZIP_NAME}"
+    echo "==> Pulling artifacts to host dist/..."
+    rm -f "/tmp/hlcontrol_artifacts.zip"
 
     (
-        sleep 1
-        GUEST_IP=$(virsh --connect qemu:///system domifaddr HLControl_default 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || echo "")
-        if [ -n "$GUEST_IP" ]; then
-            nc -w 10 "$GUEST_IP" 8080 > "dist/${ZIP_NAME}" 2>/dev/null || true
-        fi
-        if [ ! -s "dist/${ZIP_NAME}" ]; then
-            nc -w 10 127.0.0.1 58080 > "dist/${ZIP_NAME}" 2>/dev/null || true
-        fi
+        for i in {1..25}; do
+            GUEST_IP=$(virsh --connect qemu:///system domifaddr HLControl_default 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1 || echo "")
+            if [ -n "$GUEST_IP" ]; then
+                nc -w 2 "$GUEST_IP" 8080 > "/tmp/hlcontrol_artifacts.zip" 2>/dev/null || true
+                if [ -s "/tmp/hlcontrol_artifacts.zip" ]; then break; fi
+            fi
+            nc -w 2 127.0.0.1 58080 > "/tmp/hlcontrol_artifacts.zip" 2>/dev/null || true
+            if [ -s "/tmp/hlcontrol_artifacts.zip" ]; then break; fi
+            sleep 1
+        done
     ) &
     PULL_PID=$!
 
@@ -144,31 +172,42 @@ else
         netsh advfirewall firewall add rule name='ArtifactServer' dir=in action=allow protocol=TCP localport=8080 2>&1 | Out-Null
         \$l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, 8080)
         \$l.Start()
-        \$c = \$l.AcceptTcpClient()
-        \$s = \$c.GetStream()
-        \$f = [System.IO.File]::OpenRead('C:\vagrant\dist\\${ZIP_NAME}')
-        \$f.CopyTo(\$s)
-        \$f.Close()
-        \$s.Flush()
-        \$s.Close()
-        \$c.Close()
+        \$sw = [System.Diagnostics.Stopwatch]::StartNew()
+        while (-not \$l.Pending() -and \$sw.ElapsedMilliseconds -lt 25000) {
+            Start-Sleep -Milliseconds 200
+        }
+        if (\$l.Pending()) {
+            \$c = \$l.AcceptTcpClient()
+            \$s = \$c.GetStream()
+            \$f = [System.IO.File]::OpenRead('C:\vagrant\artifacts.zip')
+            \$f.CopyTo(\$s)
+            \$f.Close()
+            \$s.Flush()
+            \$s.Close()
+            \$c.Close()
+        }
         \$l.Stop()
     " 2>/dev/null || true
 
     wait "$PULL_PID" 2>/dev/null || true
 
-    if [ ! -s "dist/${ZIP_NAME}" ]; then
+    if [ ! -s "/tmp/hlcontrol_artifacts.zip" ]; then
         echo "==> Falling back to WinRM transfer..."
-        vagrant winrm -c "[Convert]::ToBase64String([System.IO.File]::ReadAllBytes('C:\vagrant\dist\\${ZIP_NAME}'), [System.Base64FormattingOptions]::InsertLineBreaks)" | tr -d '\r\n ' | base64 -d > "dist/${ZIP_NAME}"
+        vagrant winrm -c "[Convert]::ToBase64String([System.IO.File]::ReadAllBytes('C:\vagrant\artifacts.zip'), [System.Base64FormattingOptions]::InsertLineBreaks)" | tr -d '\r\n ' | base64 -d > "/tmp/hlcontrol_artifacts.zip"
     fi
 
     echo "==> Halting Vagrant VM..."
     vagrant halt
 
-    if [ -f "dist/${ZIP_NAME}" ]; then
+    if [ -s "/tmp/hlcontrol_artifacts.zip" ]; then
+        unzip -o -q "/tmp/hlcontrol_artifacts.zip" -d "dist"
+        rm -f "/tmp/hlcontrol_artifacts.zip"
         echo "========================================="
         echo "  BUILD SUCCESSFUL"
-        echo "  Output: dist/${ZIP_NAME}"
+        echo "  - ZIP Package: dist/${ZIP_NAME}"
+        if [ -f "dist/${SETUP_BASE}.exe" ]; then
+            echo "  - Installer:   dist/${SETUP_BASE}.exe"
+        fi
         echo "========================================="
     fi
 fi

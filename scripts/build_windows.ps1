@@ -25,10 +25,12 @@ if ($Release) {
     Write-Host "  Building HLControl Windows [RELEASE: v$Version]"
     $DartDefines = "--dart-define=APP_VERSION=$Version"
     $ZipName = "HLControl-v$Version-windows-x64.zip"
+    $SetupBaseName = "HLControl-v$Version-windows-x64-setup"
 } else {
     Write-Host "  Building HLControl Windows [DEV: v$Version-$GitHash]"
     $DartDefines = "--dart-define=APP_VERSION=$Version --dart-define=GIT_HASH=$GitHash --dart-define=GIT_BRANCH=$GitBranch"
     $ZipName = "HLControl-v$Version-$GitHash-windows-x64.zip"
+    $SetupBaseName = "HLControl-v$Version-$GitHash-windows-x64-setup"
 }
 Write-Host "========================================="
 
@@ -43,7 +45,7 @@ $OutputDir = "build\windows\x64\runner\Release"
 $ZipPath = "dist\$ZipName"
 
 if (Test-Path $OutputDir) {
-    Write-Host "==> Packaging into $ZipPath..."
+    Write-Host "==> Packaging standalone archive into $ZipPath..."
     if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
     if (Get-Command tar.exe -ErrorAction SilentlyContinue) {
         Push-Location $OutputDir
@@ -52,8 +54,24 @@ if (Test-Path $OutputDir) {
     } else {
         Compress-Archive -Path "$OutputDir\*" -DestinationPath $ZipPath -Force
     }
+
+    $IsccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    if (-not (Test-Path $IsccPath)) {
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install -y innosetup --no-progress
+        }
+    }
+
+    if (Test-Path $IsccPath) {
+        Write-Host "==> Compiling Windows Inno Setup installer..."
+        & $IsccPath "/DAppVersion=$Version" "/DAppArch=x64" "/DBuildDir=$RootDir\$OutputDir" "/DOutputDir=$RootDir\dist" "/DOutputBaseFilename=$SetupBaseName" "$RootDir\packaging\windows\inno_setup.iss"
+    }
+
     Write-Host "========================================="
     Write-Host "  BUILD SUCCESSFUL"
-    Write-Host "  Output: $ZipPath"
+    Write-Host "  ZIP Package: $ZipPath"
+    if (Test-Path "dist\$SetupBaseName.exe") {
+        Write-Host "  Installer:   dist\$SetupBaseName.exe"
+    }
     Write-Host "========================================="
 }
