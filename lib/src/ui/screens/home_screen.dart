@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/app_version.dart';
 import '../../core/controllers/headphone_controller.dart';
 import '../../core/models/bluetooth_device.dart';
 import '../theme/theme_controller.dart';
@@ -1826,8 +1827,6 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('HL Control is an open-source companion app for Haylou headsets created by Flopster101.'),
-              const SizedBox(height: 14),
               Text(
                 'Source code:',
                 style: TextStyle(
@@ -1835,7 +1834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               SelectableText(
                 'https://github.com/Flopster101/HLControl',
                 style: TextStyle(
@@ -2196,7 +2195,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         Text(
-                          'Version 1.0.0',
+                          AppVersion.displayVersion,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
