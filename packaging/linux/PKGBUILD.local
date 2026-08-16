@@ -1,0 +1,56 @@
+# Maintainer: Flopster101 <nahuelgomez329@gmail.com>
+pkgname=hlcontrol-bin
+pkgver=0.1.0.r57.63e6bd5
+pkgrel=1
+pkgdesc="An open-source custom controller app for Haylou Bluetooth headsets"
+arch=('x86_64')
+url="https://github.com/Flopster101/HLControl"
+license=('GPL-3.0-or-later')
+depends=(
+    'gtk3'
+    'python'
+    'bluez'
+)
+provides=('hlcontrol')
+conflicts=('hlcontrol' 'hlcontrol-git')
+
+pkgver() {
+    cd "${startdir}/../.." 2>/dev/null || return 0
+    local _ver
+    _ver=$(grep '^version:' pubspec.yaml 2>/dev/null | head -n1 | awk '{print $2}' | cut -d'+' -f1)
+    [ -z "$_ver" ] && _ver="0.1.0"
+
+    if [ "$IS_RELEASE" = "true" ]; then
+        echo "$_ver"
+    else
+        printf "%s.r%s.%s" "$_ver" "$(git rev-list --count HEAD 2>/dev/null || echo 0)" "$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    fi
+}
+
+package() {
+    local _root="${startdir}/../.."
+    local _bundle="${_root}/build/linux/x64/release/bundle"
+
+    if [ ! -d "$_bundle" ]; then
+        echo "Error: Release bundle not found. Run 'flutter build linux --release' first."
+        return 1
+    fi
+
+    # Install bundle to /usr/lib/hlcontrol
+    install -d "${pkgdir}/usr/lib/hlcontrol"
+    cp -r "${_bundle}/." "${pkgdir}/usr/lib/hlcontrol/"
+
+    # Symlink binary to /usr/bin/hlcontrol
+    install -d "${pkgdir}/usr/bin"
+    ln -s /usr/lib/hlcontrol/hlcontrol "${pkgdir}/usr/bin/hlcontrol"
+
+    # Install desktop entry
+    install -Dm644 "${startdir}/com.flopster101.hlcontrol.desktop" \
+        "${pkgdir}/usr/share/applications/com.flopster101.hlcontrol.desktop"
+
+    # Install icons (Hicolor & Pixmaps)
+    install -Dm644 "${startdir}/com.flopster101.hlcontrol.png" \
+        "${pkgdir}/usr/share/icons/hicolor/192x192/apps/com.flopster101.hlcontrol.png"
+    install -Dm644 "${startdir}/com.flopster101.hlcontrol.png" \
+        "${pkgdir}/usr/share/pixmaps/com.flopster101.hlcontrol.png"
+}

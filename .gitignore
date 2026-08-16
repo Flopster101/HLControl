@@ -31,7 +31,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/dist/
 /coverage/
+packaging/**/pkg/
+packaging/**/src/
+*.pkg.tar.*
 
 # Symbolication related
 app.*.symbols

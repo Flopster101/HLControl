@@ -1,0 +1,56 @@
+# Maintainer: Flopster101 <nahuelgomez329@gmail.com>
+pkgname=hlcontrol-git
+pkgver=0.1.0.r0
+pkgrel=1
+pkgdesc="An open-source custom controller app for Haylou Bluetooth headsets"
+arch=('x86_64')
+url="https://github.com/Flopster101/HLControl"
+license=('GPL-3.0-or-later')
+depends=(
+    'gtk3'
+    'python'
+    'bluez'
+)
+makedepends=(
+    'flutter'
+    'git'
+    'cmake'
+    'ninja'
+    'clang'
+)
+provides=('hlcontrol')
+conflicts=('hlcontrol')
+source=("git+https://github.com/Flopster101/HLControl.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}/HLControl"
+    printf "0.1.0.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cd "${srcdir}/HLControl"
+    flutter build linux --release
+}
+
+package() {
+    cd "${srcdir}/HLControl"
+
+    # Install bundle to /usr/lib/hlcontrol
+    install -d "${pkgdir}/usr/lib/hlcontrol"
+    cp -r build/linux/x64/release/bundle/. "${pkgdir}/usr/lib/hlcontrol/"
+
+    # Symlink main binary to /usr/bin/hlcontrol
+    install -d "${pkgdir}/usr/bin"
+    ln -s /usr/lib/hlcontrol/hlcontrol "${pkgdir}/usr/bin/hlcontrol"
+
+    # Install desktop launcher entry
+    install -Dm644 packaging/linux/com.flopster101.hlcontrol.desktop \
+        "${pkgdir}/usr/share/applications/com.flopster101.hlcontrol.desktop"
+
+    # Install icons (Hicolor theme & Pixmaps)
+    install -Dm644 packaging/linux/com.flopster101.hlcontrol.png \
+        "${pkgdir}/usr/share/icons/hicolor/192x192/apps/com.flopster101.hlcontrol.png"
+    install -Dm644 packaging/linux/com.flopster101.hlcontrol.png \
+        "${pkgdir}/usr/share/pixmaps/com.flopster101.hlcontrol.png"
+}

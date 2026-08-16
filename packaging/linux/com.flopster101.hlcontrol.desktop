@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=HL Control
+GenericName=Bluetooth Headset Controller
+Comment=Custom companion controller for Haylou Bluetooth headsets
+Exec=hlcontrol %u
+Icon=com.flopster101.hlcontrol
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;HardwareSettings;Settings;
+Keywords=haylou;bluetooth;headphones;headset;anc;equalizer;
+StartupWMClass=hlcontrol
