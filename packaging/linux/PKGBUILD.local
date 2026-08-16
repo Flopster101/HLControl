@@ -1,6 +1,6 @@
 # Maintainer: Flopster101 <nahuelgomez329@gmail.com>
-pkgname=hlcontrol-bin
-pkgver=0.1.0.r57.63e6bd5
+pkgname=hlcontrol
+pkgver=0.1.0.r72.5b2cdff
 pkgrel=1
 pkgdesc="An open-source custom controller app for Haylou Bluetooth headsets"
 arch=('x86_64')
@@ -8,11 +8,12 @@ url="https://github.com/Flopster101/HLControl"
 license=('GPL-3.0-or-later')
 depends=(
     'gtk3'
+    'libayatana-appindicator'
     'python'
     'bluez'
 )
 provides=('hlcontrol')
-conflicts=('hlcontrol' 'hlcontrol-git')
+conflicts=('hlcontrol-bin' 'hlcontrol-git')
 
 pkgver() {
     cd "${startdir}/../.." 2>/dev/null || return 0

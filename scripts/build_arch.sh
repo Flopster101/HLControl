@@ -44,10 +44,10 @@ cd "${ROOT_DIR}/packaging/linux"
 makepkg -p PKGBUILD.local -f
 
 # 3. Move resulting package to dist/
-mv hlcontrol-bin-*.pkg.tar.zst "${DIST_DIR}/"
+mv hlcontrol-*.pkg.tar.zst "${DIST_DIR}/"
 
 echo "========================================="
 echo "  Arch package built successfully!"
-echo "  - Package: dist/$(ls -t "${DIST_DIR}"/hlcontrol-bin-*.pkg.tar.zst | head -n1 | xargs basename)"
+echo "  - Package: dist/$(ls -t "${DIST_DIR}"/hlcontrol-*.pkg.tar.zst | head -n1 | xargs basename)"
 echo "  - Install locally with: sudo pacman -U <path-to-pkg>"
 echo "========================================="

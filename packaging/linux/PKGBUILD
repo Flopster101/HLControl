@@ -8,6 +8,7 @@ url="https://github.com/Flopster101/HLControl"
 license=('GPL-3.0-or-later')
 depends=(
     'gtk3'
+    'libayatana-appindicator'
     'python'
     'bluez'
 )
