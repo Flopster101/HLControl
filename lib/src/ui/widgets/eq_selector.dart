@@ -14,7 +14,7 @@ class EqSelector extends StatelessWidget {
 
   static const List<Map<String, dynamic>> _presets = [
     {'id': 'Default', 'label': 'Default', 'color': null},
-    {'id': 'Subwoofer', 'label': 'Bass Booster', 'color': Color(0xFFE74C3C)},
+    {'id': 'Subwoofer', 'label': 'Bass booster', 'color': Color(0xFFE74C3C)},
     {'id': 'Rock', 'label': 'Rock', 'color': Color(0xFFF1C40F)},
     {'id': 'Soft', 'label': 'Soft', 'color': Color(0xFF2ECC71)},
     {'id': 'Classical', 'label': 'Classical', 'color': Color(0xFF3498DB)},

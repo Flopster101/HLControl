@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _wearDetection => widget.headphoneController.status.wearDetection ?? false;
 
   int get _autoShutdownIndex => widget.headphoneController.status.autoShutdownIndex ?? 4;
-  final List<String> _shutdownOptions = ['30 Min', '1 Hour', '3 Hours', '5 Hours', 'Never'];
+  final List<String> _shutdownOptions = ['30 min', '1 hour', '3 hours', '5 hours', 'Never'];
 
   // Custom EQ states (10-band slider values from -12 to +12 dB)
   final List<double> _eqValues = List.filled(10, 0.0);
@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Custom EQ presets list
   final List<Map<String, dynamic>> _customPresets = [
     {
-      'name': 'Vocal Booster',
+      'name': 'Vocal booster',
       'values': [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0],
     },
     {
@@ -134,13 +134,13 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         scrollable: true,
-        title: const Text('Save Custom Preset'),
+        title: const Text('Save custom preset'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: TextField(
             controller: textController,
             decoration: const InputDecoration(
-              hintText: 'Preset Name (e.g. My Bass)',
+              hintText: 'Preset name (e.g. My bass)',
               border: OutlineInputBorder(),
             ),
             maxLength: 20,
@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => AlertDialog(
         scrollable: true,
         icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 28),
-        title: const Text('Delete Preset'),
+        title: const Text('Delete preset'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: Text(
@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         scrollable: true,
-        title: const Text('Rename Device'),
+        title: const Text('Rename device'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 380),
           child: TextField(
@@ -265,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
           content: const Text('Ringing headphones... Tap to stop.'),
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
-            label: 'STOP',
+            label: 'Stop',
             onPressed: () {
               _toggleFindDevice();
             },
@@ -354,9 +354,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isConnected) return;
     if (val) {
       final List<String> conflicts = [];
-      if (_multipoint) conflicts.add('Multipoint Connection');
-      if (_gameMode) conflicts.add('Game Mode');
-      if (_spatialAudioMode != 'Off') conflicts.add('Spatial Audio');
+      if (_multipoint) conflicts.add('multipoint connection');
+      if (_gameMode) conflicts.add('game mode');
+      if (_spatialAudioMode != 'Off') conflicts.add('spatial audio');
 
       String explanation = 'Enabling LDAC high-resolution audio provides maximum audio fidelity (up to 990 kbps).';
       if (conflicts.isNotEmpty) {
@@ -364,9 +364,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       _showRebootWarningDialog(
-        title: 'Enable LDAC Audio Codec?',
+        title: 'Enable LDAC audio codec?',
         message: explanation,
-        confirmLabel: 'Enable & Restart',
+        confirmLabel: 'Enable & restart',
         icon: Icons.high_quality,
         onConfirm: () {
           widget.headphoneController.setLdac(true);
@@ -374,9 +374,9 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else {
       _showRebootWarningDialog(
-        title: 'Disable LDAC Audio Codec?',
+        title: 'Disable LDAC audio codec?',
         message: 'Disabling LDAC will switch streaming back to standard audio codecs (AAC/SBC).',
-        confirmLabel: 'Disable & Restart',
+        confirmLabel: 'Disable & restart',
         icon: Icons.high_quality,
         onConfirm: () {
           widget.headphoneController.setLdac(false);
@@ -389,9 +389,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isConnected) return;
     if (val && _ldac) {
       _showRebootWarningDialog(
-        title: 'Enable Multipoint Connection?',
-        message: 'Multipoint (Dual-Device Connection) cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Multipoint will disable LDAC.',
-        confirmLabel: 'Turn Off LDAC & Enable',
+        title: 'Enable multipoint connection?',
+        message: 'Multipoint (dual-device connection) cannot be used simultaneously with LDAC high-resolution audio.\n\nEnabling multipoint will disable LDAC.',
+        confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.link,
         onConfirm: () {
           widget.headphoneController.setMultipoint(true);
@@ -406,9 +406,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isConnected) return;
     if (val && _ldac) {
       _showRebootWarningDialog(
-        title: 'Enable Game Mode?',
-        message: 'Low-latency Game Mode cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Game Mode will disable LDAC.',
-        confirmLabel: 'Turn Off LDAC & Enable',
+        title: 'Enable game mode?',
+        message: 'Low-latency game mode cannot be used simultaneously with LDAC high-resolution audio.\n\nEnabling game mode will disable LDAC.',
+        confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.sports_esports,
         onConfirm: () {
           widget.headphoneController.setGameMode(true);
@@ -423,9 +423,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_isConnected) return;
     if (mode != 'Off' && _ldac) {
       _showRebootWarningDialog(
-        title: 'Enable Spatial Audio ($mode)?',
-        message: 'Spatial Audio DSP processing cannot be used simultaneously with LDAC High-Resolution Audio.\n\nEnabling Spatial Audio will disable LDAC.',
-        confirmLabel: 'Turn Off LDAC & Enable',
+        title: 'Enable spatial audio ($mode)?',
+        message: 'Spatial audio DSP processing cannot be used simultaneously with LDAC high-resolution audio.\n\nEnabling spatial audio will disable LDAC.',
+        confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.spatial_audio,
         onConfirm: () {
           widget.headphoneController.setSpatialAudio(mode);
@@ -639,7 +639,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!_isConnected)
           IconButton(
             icon: const Icon(Icons.bluetooth_searching),
-            tooltip: 'Connect Device',
+            tooltip: 'Connect device',
             onPressed: _connectDevice,
           ),
       ],
@@ -869,7 +869,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return FilledButton.tonalIcon(
         onPressed: _connectDevice,
         icon: const Icon(Icons.bluetooth_searching, size: 18),
-        label: const Text('Connect Device'),
+        label: const Text('Connect device'),
         style: FilledButton.styleFrom(
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -992,7 +992,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'ANC Level',
+                  'ANC level',
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Text(
@@ -1143,7 +1143,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '10-Band Graphic EQ',
+                    '10-band graphic EQ',
                     style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -1156,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       onPressed: _isConnected ? _showSavePresetDialog : null,
                       icon: const Icon(Icons.save),
-                      tooltip: 'Save Preset',
+                      tooltip: 'Save preset',
                       visualDensity: VisualDensity.compact,
                     ),
                     IconButton(
@@ -1181,10 +1181,10 @@ class _HomeScreenState extends State<HomeScreen> {
             InkWell(
               onTap: _isConnected
                   ? () {
-                      setState(() {
-                        _showEqSliders = !_showEqSliders;
-                      });
-                    }
+                  setState(() {
+                    _showEqSliders = !_showEqSliders;
+                  });
+                }
                   : null,
               borderRadius: BorderRadius.circular(16),
               child: Container(
@@ -1292,7 +1292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 26,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
-                tooltip: _showEqSliders ? 'Collapse Sliders' : 'Expand Sliders',
+                tooltip: _showEqSliders ? 'Collapse sliders' : 'Expand sliders',
                 visualDensity: VisualDensity.compact,
               ),
             ),
@@ -1317,7 +1317,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.edit),
-                title: const Text('Rename Headset'),
+                title: const Text('Rename headset'),
                 subtitle: Text(_isConnected ? _deviceName : 'Disconnected'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _isConnected ? _showRenameDialog : null,
@@ -1325,7 +1325,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: Icon(_isFindingDevice ? Icons.volume_up : Icons.search),
-                title: const Text('Find My Headset'),
+                title: const Text('Find my headset'),
                 subtitle: Text(_isFindingDevice ? 'Ringing active — tap to stop' : 'Play sound tone to locate headphones'),
                 trailing: _isFindingDevice
                     ? FilledButton.tonal(
@@ -1341,13 +1341,13 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(height: 1, indent: 16, endIndent: 16),
               ListTile(
                 leading: const Icon(Icons.info_outline),
-                title: const Text('Connection Mode'),
-                subtitle: Text(_isConnected ? 'Bluetooth Classic RFCOMM (Port 10)' : 'Not Connected'),
+                title: const Text('Connection mode'),
+                subtitle: Text(_isConnected ? 'Bluetooth Classic RFCOMM (Port 10)' : 'Not connected'),
               ),
               const Divider(height: 1, indent: 16, endIndent: 16),
               SwitchListTile(
                 secondary: const Icon(Icons.autorenew),
-                title: const Text('Auto Connect to Last Headphones'),
+                title: const Text('Auto-connect to last headphones'),
                 subtitle: Text(
                   widget.themeController.lastConnectedName.isNotEmpty
                       ? 'Automatically link to: ${widget.themeController.lastConnectedName}'
@@ -1369,7 +1369,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.palette_outlined),
-                title: const Text('Theme Mode'),
+                title: const Text('Theme mode'),
                 subtitle: Text(_getThemeModeName(widget.themeController.themeMode)),
                 trailing: DropdownButton<ThemeMode>(
                   value: widget.themeController.themeMode,
@@ -1382,15 +1382,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   items: const [
                     DropdownMenuItem(
                       value: ThemeMode.system,
-                      child: Text('System Default'),
+                      child: Text('System default'),
                     ),
                     DropdownMenuItem(
                       value: ThemeMode.light,
-                      child: Text('Light Mode'),
+                      child: Text('Light mode'),
                     ),
                     DropdownMenuItem(
                       value: ThemeMode.dark,
-                      child: Text('Dark Mode'),
+                      child: Text('Dark mode'),
                     ),
                   ],
                 ),
@@ -1399,7 +1399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Divider(height: 1, indent: 16, endIndent: 16),
                 SwitchListTile(
                   secondary: const Icon(Icons.color_lens_outlined),
-                  title: const Text('Dynamic Colors'),
+                  title: const Text('Dynamic colors'),
                   subtitle: const Text('Use wallpaper-based Material You colors (Android 12+)'),
                   value: widget.themeController.useDynamicColor,
                   onChanged: (val) {
@@ -1468,7 +1468,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             Text(
-                              'Version 1.0.0 (Reverse Engineered)',
+                              'Version 1.0.0 (reverse engineered)',
                               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
                           ],
@@ -1478,7 +1478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Open source companion app for Haylou Bluetooth headsets (S40, S35, S30). Supports Active Noise Cancellation, Sound Effects & Equalizer, LDAC codec control, and multi-device connection.',
+                    'Open source companion app for Haylou Bluetooth headsets (S40, S35, S30). Supports active noise cancellation, sound effects & equalizer, LDAC codec control, and multi-device connection.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       height: 1.4,
@@ -1493,7 +1493,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 32),
           FilledButton.tonalIcon(
             onPressed: () => _showRebootWarningDialog(
-              title: 'Disconnect Headset',
+              title: 'Disconnect headset',
               message: 'Are you sure you want to disconnect from $_deviceName?',
               confirmLabel: 'Disconnect',
               onConfirm: () {
@@ -1508,7 +1508,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             icon: const Icon(Icons.bluetooth_disabled),
-            label: const Text('Disconnect Headset'),
+            label: const Text('Disconnect headset'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
@@ -1528,7 +1528,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Mock Headphone Connection'),
+                const Text('Mock headphone connection'),
                 Switch(
                   value: _isConnected,
                   onChanged: (val) {
@@ -1538,7 +1538,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            const Text('Simulate Battery Percentage'),
+            const Text('Simulate battery percentage'),
             Slider(
               value: _batteryPercent.toDouble(),
               min: 0,
@@ -1570,7 +1570,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               icon: const Icon(Icons.developer_mode),
-              label: const Text('Disable Developer Mode'),
+              label: const Text('Disable developer mode'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: theme.colorScheme.error,
                 side: BorderSide(color: theme.colorScheme.error.withOpacity(0.5)),
@@ -1585,11 +1585,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getThemeModeName(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.system:
-        return 'System Default';
+        return 'System default';
       case ThemeMode.light:
-        return 'Light Mode';
+        return 'Light mode';
       case ThemeMode.dark:
-        return 'Dark Mode';
+        return 'Dark mode';
     }
   }
 
@@ -1688,7 +1688,7 @@ class _HomeScreenState extends State<HomeScreen> {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.sports_esports),
-        title: const Text('Game Mode'),
+        title: const Text('Game mode'),
         subtitle: const Text('Low-latency audio channel'),
         value: _gameMode,
         onChanged: _isConnected ? _handleGameModeChanged : null,
@@ -1700,7 +1700,7 @@ class _HomeScreenState extends State<HomeScreen> {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.air),
-        title: const Text('Wind Noise Reduction'),
+        title: const Text('Wind noise reduction'),
         subtitle: const Text('Filters out outdoor wind noise'),
         value: _windNoiseReduction,
         onChanged: _isConnected
@@ -1716,7 +1716,7 @@ class _HomeScreenState extends State<HomeScreen> {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.link),
-        title: const Text('Multipoint Connection'),
+        title: const Text('Multipoint connection'),
         subtitle: const Text('Dual simultaneous device connections'),
         value: _multipoint,
         onChanged: _isConnected ? _handleMultipointChanged : null,
@@ -1728,7 +1728,7 @@ class _HomeScreenState extends State<HomeScreen> {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.high_quality),
-        title: const Text('LDAC High-Resolution Audio'),
+        title: const Text('LDAC high-resolution audio'),
         subtitle: const Text('High-definition Bluetooth audio codec'),
         value: _ldac,
         onChanged: _isConnected ? _handleLdacChanged : null,
@@ -1740,7 +1740,7 @@ class _HomeScreenState extends State<HomeScreen> {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.hearing),
-        title: const Text('Smart Wear Detection'),
+        title: const Text('Smart wear detection'),
         subtitle: const Text('Auto-pause audio on removal'),
         value: _wearDetection,
         onChanged: _isConnected
@@ -1785,7 +1785,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Spatial Audio',
+                      'Spatial audio',
                       style: theme.textTheme.bodyLarge,
                     ),
                     Text(
@@ -1831,7 +1831,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Spatial Preset Scene',
+                  'Spatial preset scene',
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -2116,7 +2116,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
 
     return AlertDialog(
       title: Text(
-        'Connect Headset',
+        'Connect headset',
         style: theme.textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w900,
         ),
@@ -2155,11 +2155,10 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             child: Text(
-                              'RECOMMENDED',
+                              'Recommended',
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
                               ),
                             ),
                           ),
@@ -2184,11 +2183,10 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             child: Text(
-                              'OTHER DEVICES',
+                              'Other devices',
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
                               ),
                             ),
                           ),
