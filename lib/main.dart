@@ -7,8 +7,10 @@ import 'src/ui/screens/home_screen.dart';
 import 'src/ui/theme/app_theme.dart';
 import 'src/ui/theme/theme_controller.dart';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final isTrayLaunch = args.contains('--tray') || args.contains('-t');
 
   // Initialize ThemeController and pre-load settings to avoid splash theme flashing
   final themeController = ThemeController();
@@ -21,6 +23,7 @@ void main() async {
   final trayService = TrayService(
     headphoneController: headphoneController,
     themeController: themeController,
+    startHidden: isTrayLaunch,
   );
   await trayService.init();
 

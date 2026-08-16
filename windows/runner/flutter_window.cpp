@@ -27,14 +27,24 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
+  bool start_hidden = false;
+  for (const auto& arg : project_.dart_entrypoint_arguments()) {
+    if (arg == "--tray" || arg == "-t") {
+      start_hidden = true;
+      break;
+    }
+  }
 
-  // Flutter can complete the first frame before the "show window" callback is
-  // registered. The following call ensures a frame is pending to ensure the
-  // window is shown. It is a no-op if the first frame hasn't completed yet.
-  flutter_controller_->ForceRedraw();
+  if (!start_hidden) {
+    flutter_controller_->engine()->SetNextFrameCallback([&]() {
+      this->Show();
+    });
+
+    // Flutter can complete the first frame before the "show window" callback is
+    // registered. The following call ensures a frame is pending to ensure the
+    // window is shown. It is a no-op if the first frame hasn't completed yet.
+    flutter_controller_->ForceRedraw();
+  }
 
   return true;
 }

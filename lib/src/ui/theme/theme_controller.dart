@@ -14,6 +14,7 @@ class ThemeController extends ChangeNotifier {
   static const _isMockConnectedKey = 'is_mock_connected';
   static const _mockBatteryPercentKey = 'mock_battery_percent';
   static const _autoConnectLastHeadphonesKey = 'auto_connect_last_headphones';
+  static const _minimizeToTrayKey = 'minimize_to_tray';
   static const _lastConnectedMacKey = 'last_connected_mac';
   static const _lastConnectedNameKey = 'last_connected_name';
 
@@ -23,6 +24,7 @@ class ThemeController extends ChangeNotifier {
   bool _isMockConnected = false; // Default to false (simulation mode disabled by default)
   int _mockBatteryPercent = 85;
   bool _autoConnectLastHeadphones = true; // Auto connect to last headphones (enabled by default)
+  bool _minimizeToTray = true; // Minimize to tray on close/minimize (enabled by default)
   String _lastConnectedMac = '';
   String _lastConnectedName = '';
   final Map<String, String> _deviceNames = {};
@@ -33,6 +35,7 @@ class ThemeController extends ChangeNotifier {
   bool get isMockConnected => _isMockConnected;
   int get mockBatteryPercent => _mockBatteryPercent;
   bool get autoConnectLastHeadphones => _autoConnectLastHeadphones;
+  bool get minimizeToTray => _minimizeToTray;
   String get lastConnectedMac => _lastConnectedMac;
   String get lastConnectedName {
     if (_lastConnectedMac.isEmpty) return '';
@@ -86,6 +89,7 @@ class ThemeController extends ChangeNotifier {
       _isMockConnected = prefs.getBool(_isMockConnectedKey) ?? false;
       _mockBatteryPercent = prefs.getInt(_mockBatteryPercentKey) ?? 85;
       _autoConnectLastHeadphones = prefs.getBool(_autoConnectLastHeadphonesKey) ?? true;
+      _minimizeToTray = prefs.getBool(_minimizeToTrayKey) ?? true;
       _lastConnectedMac = prefs.getString(_lastConnectedMacKey) ?? '';
       _lastConnectedName = prefs.getString(_lastConnectedNameKey) ?? '';
       if (_lastConnectedName.toLowerCase() == 'disconnected') {
@@ -177,6 +181,17 @@ class ThemeController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_autoConnectLastHeadphonesKey, value);
+    } catch (_) {}
+  }
+
+  /// Updates the minimize to tray setting and saves it to local storage.
+  Future<void> setMinimizeToTray(bool value) async {
+    if (_minimizeToTray == value) return;
+    _minimizeToTray = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_minimizeToTrayKey, value);
     } catch (_) {}
   }
 

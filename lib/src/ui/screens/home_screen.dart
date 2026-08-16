@@ -2203,6 +2203,23 @@ class _HomeScreenState extends State<HomeScreen> {
               widget.themeController.setAutoConnectLastHeadphones(val);
             },
           ),
+          if (defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.windows) ...[
+            Divider(
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+              indent: 16,
+              endIndent: 16,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.picture_in_picture_alt_outlined),
+              title: const Text('Minimize to tray'),
+              subtitle: const Text('Keep running in the system tray when closing the window'),
+              value: widget.themeController.minimizeToTray,
+              onChanged: (val) {
+                widget.themeController.setMinimizeToTray(val);
+              },
+            ),
+          ],
         ],
       ),
     );

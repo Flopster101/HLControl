@@ -5,14 +5,16 @@ import 'package:window_manager/window_manager.dart';
 import '../controllers/headphone_controller.dart';
 import '../../ui/theme/theme_controller.dart';
 
-class TrayService with TrayListener {
+class TrayService with TrayListener, WindowListener {
   TrayService({
     required this.headphoneController,
     required this.themeController,
+    this.startHidden = false,
   });
 
   final HeadphoneController headphoneController;
   final ThemeController themeController;
+  final bool startHidden;
   bool _isInitialized = false;
 
   DateTime _lastActionTime = DateTime.fromMillisecondsSinceEpoch(0);
@@ -27,6 +29,9 @@ class TrayService with TrayListener {
 
     try {
       await windowManager.ensureInitialized();
+      windowManager.addListener(this);
+      await windowManager.setPreventClose(true);
+
       trayManager.addListener(this);
 
       final iconPath = defaultTargetPlatform == TargetPlatform.windows
@@ -44,6 +49,10 @@ class TrayService with TrayListener {
 
       headphoneController.addListener(_updateMenu);
       themeController.addListener(_updateMenu);
+
+      if (startHidden) {
+        await windowManager.hide();
+      }
     } catch (e) {
       debugPrint('Failed to initialize TrayService: $e');
     }
@@ -188,8 +197,8 @@ class TrayService with TrayListener {
     if (_lastActionKey == key && now.difference(_lastActionTime).inMilliseconds < 350) {
       return;
     }
-    _lastActionTime = now;
     _lastActionKey = key;
+    _lastActionTime = now;
 
     switch (key) {
       case 'anc_off':
@@ -268,10 +277,24 @@ class TrayService with TrayListener {
     }
   }
 
+  @override
+  void onWindowClose() async {
+    final bool isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      if (themeController.minimizeToTray) {
+        await windowManager.hide();
+      } else {
+        await windowManager.destroy();
+        exit(0);
+      }
+    }
+  }
+
   void dispose() {
     if (_isInitialized) {
       headphoneController.removeListener(_updateMenu);
       themeController.removeListener(_updateMenu);
+      windowManager.removeListener(this);
       trayManager.removeListener(this);
       trayManager.destroy();
       _isInitialized = false;

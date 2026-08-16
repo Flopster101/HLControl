@@ -16,7 +16,18 @@ G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
-  gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+  bool start_hidden = false;
+  if (self->dart_entrypoint_arguments != nullptr) {
+    for (char** arg = self->dart_entrypoint_arguments; *arg != nullptr; ++arg) {
+      if (strcmp(*arg, "--tray") == 0 || strcmp(*arg, "-t") == 0) {
+        start_hidden = true;
+        break;
+      }
+    }
+  }
+  if (!start_hidden) {
+    gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+  }
 }
 
 // Implements GApplication::activate.
