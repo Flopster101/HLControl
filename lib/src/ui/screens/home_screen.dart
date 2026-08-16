@@ -1414,83 +1414,232 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- EQUALIZER TAB ---
   Widget _buildEqualizerTab(ThemeData theme, {required bool isWide}) {
-    return _buildCenteredScrollable(
-      key: const ValueKey(1),
-      title: 'Equalizer',
-      isWide: isWide,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
-      children: [
-        _buildSectionHeader(theme, 'Select preset'),
-        const SizedBox(height: 12),
-        Opacity(
-          opacity: _isConnected ? 1.0 : 0.4,
-          child: EqSelector(
-            selectedPreset: _selectedEqPreset,
-            enabled: _isConnected,
-            onChanged: _handleEqPresetChanged,
-          ),
-        ),
-        const SizedBox(height: 32),
-        _buildSectionHeader(theme, 'Custom graphic EQ'),
-        const SizedBox(height: 12),
-        Opacity(
-          opacity: _isConnected ? 1.0 : 0.4,
-          child: _buildCustomEqCard(theme),
-        ),
-        if (_customPresets.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _buildSectionHeader(theme, 'My custom presets'),
-          const SizedBox(height: 12),
-          Opacity(
-            opacity: _isConnected ? 1.0 : 0.4,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _customPresets.map((preset) {
-                    final name = preset['name'] as String;
-                    final values = preset['values'] as List<double>;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final is2Pane = constraints.maxWidth >= 720;
 
-                    // Check if current sliders match these values
-                    bool isMatch = true;
-                    for (int i = 0; i < 10; i++) {
-                      if ((_eqValues[i] - values[i]).abs() > 0.01) {
-                        isMatch = false;
-                        break;
-                      }
-                    }
+        if (is2Pane) {
+          return _buildCenteredScrollable(
+            key: const ValueKey(1),
+            title: 'Equalizer',
+            isWide: isWide,
+            maxWidth: 1040,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            children: [
+              // Top Presets Bar (Horizontally centered)
+              Center(
+                child: Column(
+                  children: [
+                    _buildSectionHeader(theme, 'Select preset'),
+                    const SizedBox(height: 12),
+                    Opacity(
+                      opacity: _isConnected ? 1.0 : 0.4,
+                      child: EqSelector(
+                        selectedPreset: _selectedEqPreset,
+                        enabled: _isConnected,
+                        onChanged: _handleEqPresetChanged,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
 
-                      return InputChip(
-                        label: Text(name),
-                        selected: isMatch,
-                        onSelected: _isConnected
-                            ? (selected) {
-                                setState(() {
-                                  for (int i = 0; i < 10; i++) {
-                                    _eqValues[i] = values[i];
-                                  }
-                                });
-                                widget.headphoneController.setCustomEq(_eqValues);
-                              }
-                            : null,
-                        onDeleted: _isConnected
-                            ? () => _showDeletePresetDialog(preset)
-                            : null,
-                        deleteIcon: const Icon(Icons.close, size: 16),
-                      );
-                  }).toList(),
+              // 2-Pane Content Split (Left: Graphic EQ, Right: Custom Presets)
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                opacity: _isConnected ? 1.0 : 0.45,
+                child: IgnorePointer(
+                  ignoring: !_isConnected,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left (Wider Pane, flex: 7): 10-band Graphic EQ with curve and expanded sliders
+                      Expanded(
+                        flex: 7,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildSectionHeader(theme, 'Custom graphic EQ'),
+                            const SizedBox(height: 12),
+                            _buildCustomEqCard(theme, isDesktop: true),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      // Right (Sidebar Pane, flex: 4): Dedicated Custom Presets card
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildSectionHeader(theme, 'User presets'),
+                            const SizedBox(height: 12),
+                            _buildCustomPresetsCard(theme),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        // 1-Column Layout (< 720dp)
+        return _buildCenteredScrollable(
+          key: const ValueKey(1),
+          title: 'Equalizer',
+          isWide: isWide,
+          maxWidth: 580,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          children: [
+            _buildSectionHeader(theme, 'Select preset'),
+            const SizedBox(height: 12),
+            Opacity(
+              opacity: _isConnected ? 1.0 : 0.4,
+              child: EqSelector(
+                selectedPreset: _selectedEqPreset,
+                enabled: _isConnected,
+                onChanged: _handleEqPresetChanged,
+              ),
+            ),
+            const SizedBox(height: 28),
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: _isConnected ? 1.0 : 0.45,
+              child: IgnorePointer(
+                ignoring: !_isConnected,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSectionHeader(theme, 'Custom graphic EQ'),
+                    const SizedBox(height: 12),
+                    _buildCustomEqCard(theme, isDesktop: false),
+                    const SizedBox(height: 28),
+                    _buildSectionHeader(theme, 'My custom presets'),
+                    const SizedBox(height: 12),
+                    _buildCustomPresetsCard(theme),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildCustomEqCard(ThemeData theme) {
+  Widget _buildCustomPresetsCard(ThemeData theme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'My custom presets',
+                  style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_customPresets.length}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_customPresets.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.tune_outlined,
+                        size: 32,
+                        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No custom presets saved yet',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _customPresets.map((preset) {
+                  final name = preset['name'] as String;
+                  final values = preset['values'] as List<double>;
+
+                  bool isMatch = true;
+                  for (int i = 0; i < 10; i++) {
+                    if ((_eqValues[i] - values[i]).abs() > 0.01) {
+                      isMatch = false;
+                      break;
+                    }
+                  }
+
+                  return InputChip(
+                    label: Text(name),
+                    selected: isMatch,
+                    showCheckmark: false,
+                    onSelected: _isConnected
+                        ? (selected) {
+                            setState(() {
+                              for (int i = 0; i < 10; i++) {
+                                _eqValues[i] = values[i];
+                              }
+                            });
+                            widget.headphoneController.setCustomEq(_eqValues);
+                          }
+                        : null,
+                    onDeleted: _isConnected
+                        ? () => _showDeletePresetDialog(preset)
+                        : null,
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    tooltip: 'Select $name',
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _isConnected ? _showSavePresetDialog : null,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Save current preset'),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomEqCard(ThemeData theme, {bool isDesktop = false}) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -1536,133 +1685,131 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Premium EQ curve visualizer (tappable to expand/collapse sliders)
-            InkWell(
-              onTap: _isConnected
-                  ? () {
-                  setState(() {
-                    _showEqSliders = !_showEqSliders;
-                  });
-                }
-                  : null,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                height: 100,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: CustomPaint(
-                    painter: _EqCurvePainter(
-                      values: _eqValues,
-                      primaryColor: theme.colorScheme.primary,
-                      gridColor: theme.colorScheme.onSurfaceVariant.withOpacity(0.08),
-                    ),
+            // Premium EQ curve visualizer
+            Container(
+              height: 110,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CustomPaint(
+                  painter: _EqCurvePainter(
+                    values: _eqValues,
+                    primaryColor: theme.colorScheme.primary,
+                    gridColor: theme.colorScheme.onSurfaceVariant.withOpacity(0.08),
                   ),
                 ),
               ),
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              child: _showEqSliders
-                  ? Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        // EQ Sliders distributed evenly using Expanded children inside a Row
-                        SizedBox(
-                          height: 220,
-                          child: Row(
-                            children: List.generate(_eqValues.length, (index) {
-                              return Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                                  child: Column(
-                                    children: [
-                                      Expanded(
-                                        child: RotatedBox(
-                                          quarterTurns: 3,
-                                          child: SliderTheme(
-                                            data: theme.sliderTheme.copyWith(
-                                              trackHeight: 3,
-                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                                              activeTrackColor: theme.colorScheme.primary,
-                                              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
-                                              thumbColor: theme.colorScheme.primary,
-                                              overlayColor: theme.colorScheme.primary.withOpacity(0.12),
-                                            ),
-                                            child: Slider(
-                                              value: _eqValues[index],
-                                              min: -12,
-                                              max: 12,
-                                              divisions: 24,
-                                              onChanged: _isConnected
-                                                  ? (val) {
-                                                      setState(() {
-                                                        _eqValues[index] = val;
-                                                      });
-                                                    }
-                                                  : null,
-                                              onChangeEnd: _isConnected
-                                                  ? (val) {
-                                                      widget.headphoneController.setCustomEq(_eqValues);
-                                                    }
-                                                  : null,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        '${_eqValues[index].round() > 0 ? "+" : ""}${_eqValues[index].round()}',
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: _eqValues[index] != 0.0 ? theme.colorScheme.primary : theme.colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _eqBands[index],
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                          fontSize: 9,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 4),
-            Center(
-              child: IconButton(
-                onPressed: _isConnected
-                    ? () {
-                        setState(() {
-                          _showEqSliders = !_showEqSliders;
-                        });
-                      }
-                    : null,
-                icon: Icon(
-                  _showEqSliders ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                  size: 26,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                tooltip: _showEqSliders ? 'Collapse sliders' : 'Expand sliders',
-                visualDensity: VisualDensity.compact,
+            if (isDesktop) ...[
+              const SizedBox(height: 20),
+              _buildEqSlidersRow(theme),
+            ] else ...[
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _showEqSliders
+                    ? Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          _buildEqSlidersRow(theme),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
-            ),
+              const SizedBox(height: 4),
+              Center(
+                child: IconButton(
+                  onPressed: _isConnected
+                      ? () {
+                          setState(() {
+                            _showEqSliders = !_showEqSliders;
+                          });
+                        }
+                      : null,
+                  icon: Icon(
+                    _showEqSliders ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    size: 26,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  tooltip: _showEqSliders ? 'Collapse sliders' : 'Expand sliders',
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEqSlidersRow(ThemeData theme) {
+    return SizedBox(
+      height: 220,
+      child: Row(
+        children: List.generate(_eqValues.length, (index) {
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: RotatedBox(
+                      quarterTurns: 3,
+                      child: SliderTheme(
+                        data: theme.sliderTheme.copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          activeTrackColor: theme.colorScheme.primary,
+                          inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                          thumbColor: theme.colorScheme.primary,
+                          overlayColor: theme.colorScheme.primary.withOpacity(0.12),
+                        ),
+                        child: Slider(
+                          value: _eqValues[index],
+                          min: -12,
+                          max: 12,
+                          divisions: 24,
+                          onChanged: _isConnected
+                              ? (val) {
+                                  setState(() {
+                                    _eqValues[index] = val;
+                                  });
+                                }
+                              : null,
+                          onChangeEnd: _isConnected
+                              ? (val) {
+                                  widget.headphoneController.setCustomEq(_eqValues);
+                                }
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_eqValues[index].round() > 0 ? "+" : ""}${_eqValues[index].round()}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: _eqValues[index] != 0.0 ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _eqBands[index],
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
