@@ -587,6 +587,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required EdgeInsetsGeometry padding,
     required bool isWide,
   }) {
+    final effectivePadding = isWide
+        ? const EdgeInsets.fromLTRB(20, 44, 20, 36)
+        : padding;
+
     return CustomScrollView(
       key: key,
       slivers: [
@@ -602,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 600),
               child: Padding(
-                padding: padding,
+                padding: effectivePadding,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
