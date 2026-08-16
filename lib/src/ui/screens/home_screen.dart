@@ -668,7 +668,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Noise Control Section
         if (!_isConnected || status.ancMode != 'Unknown') ...[
-          _buildSectionHeader(theme, 'Noise Control'),
+          _buildSectionHeader(theme, 'Noise control'),
           const SizedBox(height: 12),
           AncSelector(
             selectedMode: _selectedAncMode,
@@ -694,7 +694,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Auto Shutdown Section
         if (!_isConnected || (status.autoShutdownIndex != null && !_isOverEar)) ...[
-          _buildSectionHeader(theme, 'Auto Shutdown'),
+          _buildSectionHeader(theme, 'Auto shutdown'),
           const SizedBox(height: 12),
           _buildAutoShutdownCard(theme),
           const SizedBox(height: 28),
@@ -702,7 +702,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Audio Features Section
         if (hasAudioFeatures) ...[
-          _buildSectionHeader(theme, 'Audio Features'),
+          _buildSectionHeader(theme, 'Audio features'),
           const SizedBox(height: 12),
           _buildFeaturesCard(theme),
         ],
@@ -916,7 +916,7 @@ class _HomeScreenState extends State<HomeScreen> {
       isWide: isWide,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
-        _buildSectionHeader(theme, 'Select Preset'),
+        _buildSectionHeader(theme, 'Select preset'),
         const SizedBox(height: 12),
         Opacity(
           opacity: _isConnected ? 1.0 : 0.4,
@@ -941,7 +941,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 32),
-        _buildSectionHeader(theme, 'Custom Graphic EQ'),
+        _buildSectionHeader(theme, 'Custom graphic EQ'),
         const SizedBox(height: 12),
         Opacity(
           opacity: _isConnected ? 1.0 : 0.4,
@@ -949,7 +949,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (_customPresets.isNotEmpty) ...[
           const SizedBox(height: 24),
-          _buildSectionHeader(theme, 'My Custom Presets'),
+          _buildSectionHeader(theme, 'My custom presets'),
           const SizedBox(height: 12),
           Opacity(
             opacity: _isConnected ? 1.0 : 0.4,
@@ -1179,7 +1179,7 @@ class _HomeScreenState extends State<HomeScreen> {
       isWide: isWide,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
-        _buildSectionHeader(theme, 'Device Settings'),
+        _buildSectionHeader(theme, 'Device settings'),
         const SizedBox(height: 12),
         Card(
           child: Column(
@@ -1231,7 +1231,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'Theme Settings'),
+        _buildSectionHeader(theme, 'Theme settings'),
         const SizedBox(height: 12),
         Card(
           child: Column(
@@ -1281,12 +1281,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (widget.themeController.isDeveloperMode) ...[
           const SizedBox(height: 28),
-          _buildSectionHeader(theme, 'Developer Settings'),
+          _buildSectionHeader(theme, 'Developer settings'),
           const SizedBox(height: 12),
           _buildSimulatorCard(theme),
         ],
         const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'About App'),
+        _buildSectionHeader(theme, 'About app'),
         const SizedBox(height: 12),
         Card(
           clipBehavior: Clip.antiAlias,
@@ -1301,8 +1301,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Developer options enabled!'),
-                        behavior: SnackBarBehavior.floating,
+                        content: Text('Developer settings unlocked! 🎉'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
                   }
@@ -1310,24 +1310,79 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'HL Control v0.1.0',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.headphones,
+                          color: theme.colorScheme.onPrimaryContainer,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'HL Control',
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Version 1.0.0 (Reverse Engineered)',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 16),
                   Text(
-                    'An open-source custom controller app for Haylou headphones, serving as a lightweight replacement for Haylou Sound.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    'Open source companion app for Haylou Bluetooth headsets (S40, S35, S30). Supports Active Noise Cancellation, Sound Effects & Equalizer, LDAC codec control, and multi-device connection.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
+        if (_isConnected) ...[
+          const SizedBox(height: 32),
+          FilledButton.tonalIcon(
+            onPressed: () => _showRebootWarningDialog(
+              title: 'Disconnect Headset',
+              message: 'Are you sure you want to disconnect from $_deviceName?',
+              confirmLabel: 'Disconnect',
+              onConfirm: () {
+                widget.headphoneController.disconnect();
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Disconnected from $_deviceName'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            icon: const Icon(Icons.bluetooth_disabled),
+            label: const Text('Disconnect Headset'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1412,9 +1467,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSectionHeader(ThemeData theme, String title) {
     return Text(
       title,
-      style: theme.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w900,
-        letterSpacing: 0.5,
+      style: theme.textTheme.titleSmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
       ),
     );
