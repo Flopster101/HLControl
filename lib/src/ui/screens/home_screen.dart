@@ -25,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentTab = 0;
+  bool _isRailExpanded = true;
   int _versionTapCount = 0;
 
   // Getters from HeadphoneController
@@ -777,122 +778,197 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSidebar(ThemeData theme) {
-    return Container(
-      width: 240,
+    final sidebarWidth = _isRailExpanded ? 240.0 : 76.0;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      width: sidebarWidth,
+      clipBehavior: Clip.hardEdge,
       color: theme.colorScheme.surfaceContainerLow,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 36, 20, 24),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.headphones_rounded,
-                    size: 22,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'HL Control',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _SidebarItem(
-            icon: Icons.tune_rounded,
-            label: 'Control',
-            index: 0,
-            selectedIndex: _currentTab,
-            onTap: () => setState(() => _currentTab = 0),
-          ),
-          _SidebarItem(
-            icon: Icons.equalizer_rounded,
-            label: 'Equalizer',
-            index: 1,
-            selectedIndex: _currentTab,
-            onTap: () => setState(() => _currentTab = 1),
-          ),
-          _SidebarItem(
-            icon: Icons.settings_rounded,
-            label: 'Settings',
-            index: 2,
-            selectedIndex: _currentTab,
-            onTap: () => setState(() => _currentTab = 2),
-          ),
-          const Spacer(),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: (_isConnected && _currentTab != 0)
-                ? Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
+      child: SafeArea(
+        right: false,
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: 0,
+          maxWidth: 240.0,
+          child: SizedBox(
+            width: _isRailExpanded ? 240.0 : 76.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+              child: SizedBox(
+                height: 48,
+                child: _isRailExpanded
+                    ? Row(
                         children: [
                           Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: theme.colorScheme.primary,
+                            width: 56,
+                            height: 48,
+                            alignment: Alignment.center,
+                            child: IconButton(
+                              icon: const Icon(Icons.menu_open_rounded),
+                              tooltip: 'Collapse sidebar',
+                              onPressed: () => setState(() => _isRailExpanded = false),
                             ),
                           ),
-                          const SizedBox(width: 10),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _deviceName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                if (_batteryPercent > 0)
-                                  Text(
-                                    '$_batteryPercent% battery',
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                              ],
+                            child: Text(
+                              'HL Control',
+                              maxLines: 1,
+                              overflow: TextOverflow.clip,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                           ),
                         ],
+                      )
+                    : Center(
+                        child: Container(
+                          width: 56,
+                          height: 48,
+                          alignment: Alignment.center,
+                          child: IconButton(
+                            icon: const Icon(Icons.menu_rounded),
+                            tooltip: 'Expand sidebar',
+                            onPressed: () => setState(() => _isRailExpanded = true),
+                          ),
+                        ),
                       ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
+              ),
+            ),
+            _SidebarItem(
+              icon: _currentTab == 0 ? Icons.tune_rounded : Icons.tune_outlined,
+              label: 'Control',
+              index: 0,
+              selectedIndex: _currentTab,
+              isExpanded: _isRailExpanded,
+              onTap: () => setState(() => _currentTab = 0),
+            ),
+            _SidebarItem(
+              icon: _currentTab == 1 ? Icons.equalizer_rounded : Icons.equalizer_outlined,
+              label: 'Equalizer',
+              index: 1,
+              selectedIndex: _currentTab,
+              isExpanded: _isRailExpanded,
+              onTap: () => setState(() => _currentTab = 1),
+            ),
+            _SidebarItem(
+              icon: _currentTab == 2 ? Icons.settings_rounded : Icons.settings_outlined,
+              label: 'Settings',
+              index: 2,
+              selectedIndex: _currentTab,
+              isExpanded: _isRailExpanded,
+              onTap: () => setState(() => _currentTab = 2),
+            ),
+            const Spacer(),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: (_isConnected && _currentTab != 0)
+                  ? Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: _isRailExpanded
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _deviceName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.labelMedium?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: theme.colorScheme.onSurface,
+                                          ),
+                                        ),
+                                        if (_batteryPercent > 0)
+                                          Text(
+                                            '$_batteryPercent% battery',
+                                            style: theme.textTheme.labelSmall?.copyWith(
+                                              color: theme.colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Center(
+                              child: Tooltip(
+                                message: '$_deviceName (${_batteryPercent > 0 ? '$_batteryPercent%' : 'Connected'})',
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.surfaceContainer,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.headphones_rounded,
+                                        size: 20,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      Positioned(
+                                        right: 6,
+                                        top: 6,
+                                        child: Container(
+                                          width: 7,
+                                          height: 7,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildCurrentTabContent(ThemeData theme, {required bool isWide}) {
@@ -2720,6 +2796,7 @@ class _SidebarItem extends StatefulWidget {
     required this.label,
     required this.index,
     required this.selectedIndex,
+    required this.isExpanded,
     required this.onTap,
   });
 
@@ -2727,6 +2804,7 @@ class _SidebarItem extends StatefulWidget {
   final String label;
   final int index;
   final int selectedIndex;
+  final bool isExpanded;
   final VoidCallback onTap;
 
   @override
@@ -2758,48 +2836,101 @@ class _SidebarItemState extends State<_SidebarItem> {
         ? theme.colorScheme.onSecondaryContainer
         : theme.colorScheme.onSurface;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(28),
-            hoverColor: Colors.transparent,
-            highlightColor: theme.colorScheme.secondaryContainer.withOpacity(0.24),
-            splashColor: theme.colorScheme.onSecondaryContainer.withOpacity(0.12),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: backgroundColor,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    widget.icon,
-                    color: foregroundColor,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    widget.label,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: textColor,
+    if (widget.isExpanded) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: BorderRadius.circular(28),
+              hoverColor: Colors.transparent,
+              highlightColor: theme.colorScheme.secondaryContainer.withOpacity(0.24),
+              splashColor: theme.colorScheme.onSecondaryContainer.withOpacity(0.12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  color: backgroundColor,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Center(
+                        child: Icon(
+                          widget.icon,
+                          color: foregroundColor,
+                          size: 22,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        widget.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: textColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Center(
+          child: Tooltip(
+            message: widget.label,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: widget.onTap,
+                  borderRadius: BorderRadius.circular(16),
+                  hoverColor: Colors.transparent,
+                  highlightColor: theme.colorScheme.secondaryContainer.withOpacity(0.24),
+                  splashColor: theme.colorScheme.onSecondaryContainer.withOpacity(0.12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 56,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: backgroundColor,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        widget.icon,
+                        color: foregroundColor,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
   }
 }
 
