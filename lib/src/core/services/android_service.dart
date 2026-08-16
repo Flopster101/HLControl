@@ -425,9 +425,9 @@ class AndroidHeadphoneService implements HeadphoneService {
       final val = attrs[ordRunSpatialAudio]![0];
       String mode = 'Off';
       if (val == 0) {
-        mode = 'Dynamic (Tracking)';
+        mode = 'Dynamic';
       } else if (val == 1) {
-        mode = 'Static (Surround)';
+        mode = 'Static';
       } else if (val == 2) {
         mode = 'Off';
       }
@@ -481,7 +481,7 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setGameMode(bool enabled) async {
-    await _writeSetting(1, enabled ? 1 : 0);
+    await _writeSetting(5, enabled ? 1 : 0);
   }
 
   @override

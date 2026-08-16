@@ -141,14 +141,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_optimisticOverrides.containsKey('spatial_audio')) {
       return _optimisticOverrides['spatial_audio'] as String;
     }
-    return widget.headphoneController.status.spatialAudioMode;
+    final mode = widget.headphoneController.status.spatialAudioMode;
+    if (mode.contains('Dynamic')) return 'Dynamic';
+    if (mode.contains('Static')) return 'Static';
+    return 'Off';
   }
 
   String get _spatialScene {
     if (_optimisticOverrides.containsKey('spatial_scene')) {
       return _optimisticOverrides['spatial_scene'] as String;
     }
-    return widget.headphoneController.status.spatialScene;
+    final scene = widget.headphoneController.status.spatialScene;
+    if (scene.contains('Sport')) return 'Sport';
+    if (scene.contains('Movie')) return 'Movie';
+    return 'Music';
   }
 
   bool get _wearDetection {
