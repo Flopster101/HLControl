@@ -708,15 +708,23 @@ class _HomeScreenState extends State<HomeScreen> {
             final isWide = constraints.maxWidth > 650;
 
             return Scaffold(
+              backgroundColor: theme.colorScheme.surface,
               body: isWide
                   ? Row(
                       children: [
                         _buildSidebar(theme),
-                        const VerticalDivider(thickness: 1, width: 1),
+                        VerticalDivider(
+                          thickness: 1,
+                          width: 1,
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
                         Expanded(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: _buildCurrentTabContent(theme, isWide: true),
+                          child: Container(
+                            color: theme.colorScheme.surface,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: _buildCurrentTabContent(theme, isWide: true),
+                            ),
                           ),
                         ),
                       ],
@@ -776,50 +784,111 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(20, 36, 20, 24),
+            child: Row(
               children: [
-                Text(
-                  'HL Control',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.headphones_rounded,
+                    size: 22,
+                    color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                if (_isConnected) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    _deviceName,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                const SizedBox(width: 12),
+                Text(
+                  'HL Control',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: -0.5,
                   ),
-                ],
+                ),
               ],
             ),
           ),
           _SidebarItem(
-            icon: Icons.tune,
+            icon: Icons.tune_rounded,
             label: 'Control',
             index: 0,
             selectedIndex: _currentTab,
             onTap: () => setState(() => _currentTab = 0),
           ),
           _SidebarItem(
-            icon: Icons.equalizer,
+            icon: Icons.equalizer_rounded,
             label: 'Equalizer',
             index: 1,
             selectedIndex: _currentTab,
             onTap: () => setState(() => _currentTab = 1),
           ),
           _SidebarItem(
-            icon: Icons.settings,
+            icon: Icons.settings_rounded,
             label: 'Settings',
             index: 2,
             selectedIndex: _currentTab,
             onTap: () => setState(() => _currentTab = 2),
+          ),
+          const Spacer(),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: (_isConnected && _currentTab != 0)
+                ? Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _deviceName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (_batteryPercent > 0)
+                                  Text(
+                                    '$_batteryPercent% battery',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
