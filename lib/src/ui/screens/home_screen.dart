@@ -761,10 +761,17 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 180,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.35),
+          color: theme.colorScheme.surfaceContainerLow,
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.primary.withOpacity(0.05),
+              blurRadius: 32,
+              spreadRadius: 6,
+            ),
+          ],
           border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.3),
-            width: 2,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.25),
+            width: 1.5,
           ),
         ),
         child: Center(
@@ -784,10 +791,17 @@ class _HomeScreenState extends State<HomeScreen> {
       height: 180,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.2),
+        color: theme.colorScheme.surfaceContainerLow,
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.12),
+            blurRadius: 36,
+            spreadRadius: 6,
+          ),
+        ],
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.25),
-          width: 2,
+          color: theme.colorScheme.primary.withOpacity(0.2),
+          width: 1.5,
         ),
       ),
       child: Center(
