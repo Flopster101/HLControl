@@ -83,6 +83,8 @@ if [ "$BUILD_APPIMAGE" = true ]; then
 fi
 
 echo "========================================="
-echo "  Artifacts ready in dist/:"
-ls -lh "${DIST_DIR}"
+echo "  BUILD SUCCESSFUL"
+if [ "$BUILD_TAR" = true ]; then
+    echo "  - Tarball: dist/${TAR_NAME}"
+fi
 echo "========================================="
