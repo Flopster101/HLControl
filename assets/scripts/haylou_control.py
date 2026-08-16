@@ -39,13 +39,18 @@ CMD_GET_DEVICE_INFO = 2
 CMD_SET_DEVICE_INFO = 8
 CMD_GET_DEVICE_RUN_INFO = 9
 CMD_REPORT_DEVICE_STATUS = 14
+CMD_SEND_DEVICE_FILE = 18
+CMD_SET_DEVICE_CONFIG = 242
+CMD_GET_DEVICE_CONFIG = 243
 
 # Attribute IDs for writing settings (Command 8)
 ATTR_WRITE_AUTO_SHUTDOWN = 0
+ATTR_WRITE_2DEVICES_CONNECT = 1
 ATTR_WRITE_EQ_MODE = 2
 ATTR_WRITE_ANC_MODE = 4
 ATTR_WRITE_GAME_MODE = 5
 ATTR_WRITE_AUTO_PLAY = 6
+ATTR_WRITE_ANTI_LEAK = 7
 ATTR_WRITE_LDAC = 8
 ATTR_WRITE_MULTIPOINT = 9
 ATTR_WRITE_SPATIAL_AUDIO = 10
@@ -58,6 +63,7 @@ MASK_QUERY_AUTO_SHUTDOWN = 32
 MASK_QUERY_ANC_STATUS = 512
 MASK_QUERY_GAME_MODE = 2048
 MASK_QUERY_EQ_MODE = 4096
+MASK_QUERY_ANTI_LEAK = 32768
 MASK_QUERY_LDAC = 65536
 MASK_QUERY_MULTIPOINT = 131072
 MASK_QUERY_SPATIAL_AUDIO = 262144
@@ -79,6 +85,7 @@ ORD_RUN_AUTO_SHUTDOWN = 5
 ORD_RUN_ANC_STATUS = 9
 ORD_RUN_GAME_MODE = 11
 ORD_RUN_EQ_MODE = 12
+ORD_RUN_ANTI_LEAK = 15
 ORD_RUN_LDAC = 16
 ORD_RUN_MULTIPOINT = 17
 ORD_RUN_SPATIAL_AUDIO = 18
@@ -96,8 +103,22 @@ ANC_MODES = {
     4: "Adaptive Auto-ANC"
 }
 
-# EQ Presets (Read value mapping)
-EQ_PRESETS = {
+# Standard 9 Presets for Liesheng devices
+STANDARD_EQ_PRESETS = {
+    0: "Default",
+    1: "Vocal",
+    2: "Rock",
+    3: "Classical",
+    4: "Popularity",
+    5: "Bass",
+    6: "Subwoofer",
+    7: "Soft",
+    8: "Outdoor",
+    240: "Custom/Customize"
+}
+
+# S40 specific preset mappings
+S40_EQ_PRESETS = {
     0: "Default",
     1: "Subwoofer",
     2: "Rock",
@@ -111,14 +132,164 @@ EQ_PRESETS = {
     240: "Custom/Customize"
 }
 
-# EQ Presets (Write value mapping)
-EQ_WRITE_MAP = {
-    0: 0,  # Default
-    1: 6,  # Subwoofer
-    2: 2,  # Rock
-    3: 7,  # Soft
-    4: 3,  # Classical
+S40_EQ_WRITE_MAP = {
+    0: 0,
+    1: 6,
+    2: 2,
+    3: 7,
+    4: 3,
 }
+
+# Touch Gesture Definitions (Config ID 2)
+GESTURE_TYPES = {
+    1: "Double Tap",
+    2: "Triple Tap",
+    3: "Long Press"
+}
+
+GESTURE_FUNCTIONS = {
+    0: "Voice Assistant",
+    1: "Play / Pause",
+    2: "Previous Track",
+    3: "Next Track",
+    4: "Volume Up",
+    5: "Volume Down",
+    6: "ANC Toggle",
+    7: "Game Mode",
+    255: "Disabled / None"
+}
+
+# Device Models & Capabilities Registry
+class DeviceModel:
+    def __init__(self, key, pid, name, form_factor="tws", has_anc=True, has_anc_levels=True,
+                 has_spatial_audio=False, has_ldac=False, has_tws_battery=True,
+                 has_gestures=True, has_wear_detection=False, has_auto_shutdown=True,
+                 has_anti_leak=False, eq_type="standard"):
+        self.key = key
+        self.pid = pid
+        self.name = name
+        self.form_factor = form_factor
+        self.has_anc = has_anc
+        self.has_anc_levels = has_anc_levels
+        self.has_spatial_audio = has_spatial_audio
+        self.has_ldac = has_ldac
+        self.has_tws_battery = has_tws_battery
+        self.has_gestures = has_gestures
+        self.has_wear_detection = has_wear_detection
+        self.has_auto_shutdown = has_auto_shutdown
+        self.has_anti_leak = has_anti_leak
+        self.eq_type = eq_type
+
+    def to_dict(self):
+        return {
+            "key": self.key,
+            "pid": self.pid,
+            "name": self.name,
+            "form_factor": self.form_factor,
+            "capabilities": {
+                "has_anc": self.has_anc,
+                "has_anc_levels": self.has_anc_levels,
+                "has_spatial_audio": self.has_spatial_audio,
+                "has_ldac": self.has_ldac,
+                "has_tws_battery": self.has_tws_battery,
+                "has_gestures": self.has_gestures,
+                "has_wear_detection": self.has_wear_detection,
+                "has_auto_shutdown": self.has_auto_shutdown,
+                "has_anti_leak": self.has_anti_leak,
+                "eq_type": self.eq_type,
+            }
+        }
+
+KNOWN_MODELS = [
+    DeviceModel("S40", 34, "Haylou S40", form_factor="headband", has_anc=True, has_anc_levels=True,
+                has_spatial_audio=True, has_ldac=True, has_tws_battery=False, has_gestures=False,
+                has_wear_detection=False, has_auto_shutdown=False, eq_type="s40"),
+    DeviceModel("S35", 16, "Haylou S35 ANC", form_factor="headband", has_anc=True, has_anc_levels=True,
+                has_spatial_audio=False, has_ldac=False, has_tws_battery=False, has_gestures=False,
+                has_wear_detection=False, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("S30", 20, "Haylou S30", form_factor="headband", has_anc=True, has_anc_levels=True,
+                has_spatial_audio=False, has_ldac=False, has_tws_battery=False, has_gestures=False,
+                has_wear_detection=False, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("HD01", 39, "Haylou FlowLoop S33", form_factor="headband", has_anc=True, has_anc_levels=True,
+                has_spatial_audio=False, has_ldac=False, has_tws_battery=False, has_gestures=False,
+                has_wear_detection=False, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("X2", 18, "Haylou W1 ANC", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("T016", 22, "Haylou Mori Pro", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("T016P", 36, "Haylou Mori Plus", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("T021", 37, "Haylou Flowbuds N55", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_wear_detection=True, has_auto_shutdown=False, eq_type="standard"),
+    DeviceModel("HT02", 38, "Haylou Flowbuds N50", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=False, eq_type="standard"),
+    DeviceModel("HT03", 41, "Haylou Flowbuds N70", form_factor="tws", has_anc=True, has_anc_levels=True,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=False, eq_type="standard"),
+    DeviceModel("HT06", 40, "Haylou Flowbuds N10", form_factor="tws", has_anc=True, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=False, eq_type="standard"),
+    DeviceModel("X1", 17, "Haylou X1 2023", form_factor="tws", has_anc=False, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("T013", 21, "Haylou X1 Plus", form_factor="tws", has_anc=False, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("X1L", 33, "Haylou X1 ACE", form_factor="tws", has_anc=False, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("BC04", 19, "Haylou Purfree Lite", form_factor="open_ear", has_anc=False, has_anc_levels=False,
+                has_tws_battery=False, has_gestures=False, has_auto_shutdown=True, has_anti_leak=True, eq_type="standard"),
+    DeviceModel("OW02", 32, "Haylou Earhook 1", form_factor="open_ear", has_anc=False, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+    DeviceModel("OW03", 25, "Haylou Airfree", form_factor="open_ear", has_anc=False, has_anc_levels=False,
+                has_tws_battery=True, has_gestures=True, has_auto_shutdown=True, eq_type="standard"),
+]
+
+def identify_device_model(name="", pid=None):
+    if pid is not None:
+        for m in KNOWN_MODELS:
+            if m.pid == pid:
+                return m
+
+    name_lower = (name or "").lower()
+    if "s40" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "S40")
+    if "s35" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "S35")
+    if "s30" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "S30")
+    if "s33" in name_lower or "flowloop" in name_lower or "hd01" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "HD01")
+    if "w1" in name_lower or "t007" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "X2")
+    if "mori plus" in name_lower or "t016p" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "T016P")
+    if "mori" in name_lower or "t016" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "T016")
+    if "n55" in name_lower or "t021" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "T021")
+    if "n50" in name_lower or "ht02" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "HT02")
+    if "n70" in name_lower or "ht03" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "HT03")
+    if "n10" in name_lower or "ht06" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "HT06")
+    if "x1 ace" in name_lower or "x1l" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "X1L")
+    if "x1 plus" in name_lower or "t013" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "T013")
+    if "x1" in name_lower or "t003" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "X1")
+    if "purfree" in name_lower or "bc04" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "BC04")
+    if "earhook" in name_lower or "ow02" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "OW02")
+    if "airfree" in name_lower or "ow03" in name_lower:
+        return next(m for m in KNOWN_MODELS if m.key == "OW03")
+
+    if any(h in name_lower for h in ["headband", "headphone", "over-ear"]):
+        return DeviceModel("GENERIC_HEADBAND", 0, name or "Haylou Headband", form_factor="headband",
+                           has_anc=True, has_anc_levels=True, has_tws_battery=False, has_gestures=False)
+
+    # Generic TWS Fallback
+    return DeviceModel("GENERIC_TWS", 0, name or "Haylou Device", form_factor="tws",
+                       has_anc=True, has_anc_levels=True, has_tws_battery=True, has_gestures=True)
 
 # Terminal colors
 COLOR_BORDER = "\033[38;2;120;81;255m"
@@ -207,11 +378,13 @@ def reset_bluetooth_connection(mac_address):
 # Controller implementation
 
 class HaylouHeadphoneController:
-    def __init__(self, mac_address, port=10):
+    def __init__(self, mac_address, port=10, initial_name=None):
         self.mac_address = mac_address
         self.port = port
         self.sock = None
         self.seq = 0
+        self.device_name = initial_name or "Unknown"
+        self.model = identify_device_model(self.device_name)
 
     def connect(self):
         print(f"Connecting to RFCOMM on {self.mac_address}:{self.port}...")
@@ -221,16 +394,16 @@ class HaylouHeadphoneController:
                 self.sock.connect((self.mac_address, self.port))
                 self.sock.settimeout(1.0)
                 print("Connected successfully!")
+                self._update_model_from_device()
                 return True
             except OSError as e:
-                if e.errno == 16:  # Device or resource busy
+                if e.errno == 16:
                     if attempt < 3:
                         print(f"Port {self.port} is busy. Waiting for OS to release the socket (attempt {attempt+1}/4)...")
                         time.sleep(2.0)
                         continue
                     else:
                         print(f"\n[Errno 16] Port {self.port} remains busy after multiple retries.")
-                        print("This happens if another process holds the RFCOMM channel.")
                         try:
                             choice = input("Would you like to force reset the Bluetooth link? [y/N]: ").strip().lower()
                         except (KeyboardInterrupt, EOFError):
@@ -243,6 +416,7 @@ class HaylouHeadphoneController:
                                     self.sock.connect((self.mac_address, self.port))
                                     self.sock.settimeout(1.0)
                                     print("Connected successfully on retry!")
+                                    self._update_model_from_device()
                                     return True
                                 except Exception as retry_err:
                                     print(f"Failed to connect on retry: {retry_err}")
@@ -255,6 +429,15 @@ class HaylouHeadphoneController:
                 self.sock = None
                 return False
         return False
+
+    def _update_model_from_device(self):
+        try:
+            name = self.query_device_name()
+            if name:
+                self.device_name = name
+                self.model = identify_device_model(self.device_name)
+        except Exception:
+            pass
 
     def disconnect(self):
         if self.sock:
@@ -354,7 +537,14 @@ class HaylouHeadphoneController:
             has_status = not (op_code & 0x40)
             attrs = parse_tlv_blocks(payload, has_status_byte=has_status)
             if ORD_DEV_BATTERY in attrs:
-                return attrs[ORD_DEV_BATTERY][0]
+                val_bytes = attrs[ORD_DEV_BATTERY]
+                if len(val_bytes) == 1:
+                    return {"single": val_bytes[0]}
+                elif len(val_bytes) >= 2:
+                    res = {"left": val_bytes[0], "right": val_bytes[1]}
+                    if len(val_bytes) >= 3:
+                        res["case"] = val_bytes[2]
+                    return res
         return None
 
     def query_run_info(self, mask):
@@ -368,7 +558,7 @@ class HaylouHeadphoneController:
 
     def query_eq_preset(self):
         payload = bytes([0x00, 0x07])
-        resp = self.send_and_receive(OP_READ, 243, payload)
+        resp = self.send_and_receive(OP_READ, CMD_GET_DEVICE_CONFIG, payload)
         if resp:
             op_code, _, _, response_payload = resp
             has_status = not (op_code & 0x40)
@@ -381,7 +571,7 @@ class HaylouHeadphoneController:
 
     def query_anc_level(self):
         payload = bytes([0x00, 0x0B])
-        resp = self.send_and_receive(OP_READ, 243, payload)
+        resp = self.send_and_receive(OP_READ, CMD_GET_DEVICE_CONFIG, payload)
         if resp:
             op_code, _, _, response_payload = resp
             has_status = not (op_code & 0x40)
@@ -393,6 +583,32 @@ class HaylouHeadphoneController:
                 elif len(val_bytes) >= 1:
                     return val_bytes[0]
         return None
+
+    def query_gestures(self):
+        payload = bytes([0x00, 0x02])
+        resp = self.send_and_receive(OP_READ, CMD_GET_DEVICE_CONFIG, payload)
+        gestures = {}
+        if resp:
+            op_code, _, _, response_payload = resp
+            has_status = not (op_code & 0x40)
+            configs = parse_config_blocks(response_payload, has_status_byte=has_status)
+            if 2 in configs:
+                data = configs[2]
+                i = 0
+                while i + 3 <= len(data):
+                    g_type = data[i]
+                    l_fn = data[i+1]
+                    r_fn = data[i+2]
+                    gestures[g_type] = {
+                        "type_id": g_type,
+                        "type_name": GESTURE_TYPES.get(g_type, f"Type {g_type}"),
+                        "left_func": l_fn,
+                        "left_name": GESTURE_FUNCTIONS.get(l_fn, f"Func {l_fn}"),
+                        "right_func": r_fn,
+                        "right_name": GESTURE_FUNCTIONS.get(r_fn, f"Func {r_fn}")
+                    }
+                    i += 3
+        return gestures
 
     def get_status(self):
         status = {}
@@ -410,36 +626,65 @@ class HaylouHeadphoneController:
                             break
             except Exception:
                 pass
-        status['device_name'] = name if name else "Unknown"
+        status['device_name'] = name if name else self.device_name
+        self.device_name = status['device_name']
+        self.model = identify_device_model(self.device_name)
+        status['model_info'] = self.model.to_dict()
 
-        battery = self.query_battery()
-        status['battery'] = f"{battery}%" if battery is not None else "Unknown"
+        battery_data = self.query_battery()
+        if battery_data:
+            if "single" in battery_data:
+                b_val = battery_data["single"]
+                status['battery'] = f"{b_val}%"
+                status['battery_left'] = None
+                status['battery_right'] = None
+                status['battery_case'] = None
+            else:
+                l_val = battery_data.get("left", 0)
+                r_val = battery_data.get("right", 0)
+                c_val = battery_data.get("case")
+                status['battery_left'] = f"{l_val}%"
+                status['battery_right'] = f"{r_val}%"
+                status['battery_case'] = f"{c_val}%" if c_val is not None else None
+                if c_val is not None:
+                    status['battery'] = f"L: {l_val}% | R: {r_val}% | Case: {c_val}%"
+                else:
+                    status['battery'] = f"L: {l_val}% | R: {r_val}%"
+        else:
+            status['battery'] = "Unknown"
+            status['battery_left'] = None
+            status['battery_right'] = None
+            status['battery_case'] = None
 
         combined_mask = (MASK_QUERY_ANC_STATUS | MASK_QUERY_GAME_MODE |
                          MASK_QUERY_MULTIPOINT | MASK_QUERY_LDAC |
                          MASK_QUERY_WIND_NOISE | MASK_QUERY_WEAR_DETECTION |
                          MASK_QUERY_WEAR_STATE | MASK_QUERY_EQ_MODE |
                          MASK_QUERY_AUTO_SHUTDOWN | MASK_QUERY_SPATIAL_AUDIO |
-                         MASK_QUERY_SPATIAL_SCENE)
+                         MASK_QUERY_SPATIAL_SCENE | MASK_QUERY_ANTI_LEAK)
 
         run_attrs = self.query_run_info(combined_mask)
 
-        if ORD_RUN_ANC_STATUS in run_attrs:
+        if self.model.has_anc and ORD_RUN_ANC_STATUS in run_attrs:
             anc_val = run_attrs[ORD_RUN_ANC_STATUS][0]
             status['anc_mode'] = ANC_MODES.get(anc_val, f"Unknown ({anc_val})")
         else:
-            status['anc_mode'] = "Unknown"
+            status['anc_mode'] = "Normal (Off)" if not self.model.has_anc else "Unknown"
 
-        anc_lvl_val = self.query_anc_level()
-        anc_level_map = {0: "High", 1: "Medium", 2: "Low"}
-        status['anc_level'] = anc_level_map.get(anc_lvl_val, "Unknown" if anc_lvl_val is None else f"Level {anc_lvl_val}")
+        if self.model.has_anc_levels:
+            anc_lvl_val = self.query_anc_level()
+            anc_level_map = {0: "High", 1: "Medium", 2: "Low"}
+            status['anc_level'] = anc_level_map.get(anc_lvl_val, "Unknown" if anc_lvl_val is None else f"Level {anc_lvl_val}")
+        else:
+            status['anc_level'] = "N/A"
 
+        presets_dict = S40_EQ_PRESETS if self.model.eq_type == "s40" else STANDARD_EQ_PRESETS
         if ORD_RUN_EQ_MODE in run_attrs:
             eq_val = run_attrs[ORD_RUN_EQ_MODE][0]
-            status['eq_mode'] = EQ_PRESETS.get(eq_val, f"Unknown ({eq_val})")
+            status['eq_mode'] = presets_dict.get(eq_val, f"Unknown ({eq_val})")
         else:
             eq_val = self.query_eq_preset()
-            status['eq_mode'] = EQ_PRESETS.get(eq_val, f"Unknown ({eq_val})") if eq_val is not None else "Unknown"
+            status['eq_mode'] = presets_dict.get(eq_val, f"Unknown ({eq_val})") if eq_val is not None else "Unknown"
 
         if ORD_RUN_GAME_MODE in run_attrs:
             status['game_mode'] = "Enabled" if run_attrs[ORD_RUN_GAME_MODE][0] == 1 else "Disabled"
@@ -456,15 +701,21 @@ class HaylouHeadphoneController:
         else:
             status['multipoint'] = "Unknown"
 
-        if ORD_RUN_LDAC in run_attrs:
-            status['ldac'] = "Enabled" if run_attrs[ORD_RUN_LDAC][0] == 1 else "Disabled"
+        if self.model.has_ldac:
+            if ORD_RUN_LDAC in run_attrs:
+                status['ldac'] = "Enabled" if run_attrs[ORD_RUN_LDAC][0] == 1 else "Disabled"
+            else:
+                status['ldac'] = "Unknown"
         else:
-            status['ldac'] = "Unknown"
+            status['ldac'] = "N/A"
 
-        if ORD_RUN_WEAR_DETECTION in run_attrs:
-            status['wear_detection'] = "Enabled" if run_attrs[ORD_RUN_WEAR_DETECTION][0] == 1 else "Disabled"
+        if self.model.has_wear_detection:
+            if ORD_RUN_WEAR_DETECTION in run_attrs:
+                status['wear_detection'] = "Enabled" if run_attrs[ORD_RUN_WEAR_DETECTION][0] == 1 else "Disabled"
+            else:
+                status['wear_detection'] = "Unknown"
         else:
-            status['wear_detection'] = "Unknown"
+            status['wear_detection'] = "N/A"
 
         if ORD_RUN_WEAR_STATE in run_attrs:
             val = run_attrs[ORD_RUN_WEAR_STATE][0]
@@ -472,7 +723,7 @@ class HaylouHeadphoneController:
         else:
             status['wear_state'] = "Unknown"
 
-        if ORD_RUN_AUTO_SHUTDOWN in run_attrs:
+        if self.model.has_auto_shutdown and ORD_RUN_AUTO_SHUTDOWN in run_attrs:
             val = run_attrs[ORD_RUN_AUTO_SHUTDOWN][0]
             if val == 1:
                 status['auto_shutdown'] = "30 minutes"
@@ -487,27 +738,44 @@ class HaylouHeadphoneController:
             else:
                 status['auto_shutdown'] = f"{val * 30} minutes" if val != 0 else "Unknown"
         else:
-            status['auto_shutdown'] = "Unknown"
+            status['auto_shutdown'] = "N/A" if not self.model.has_auto_shutdown else "Unknown"
 
-        if ORD_RUN_SPATIAL_AUDIO in run_attrs:
-            val = run_attrs[ORD_RUN_SPATIAL_AUDIO][0]
-            if val == 0:
-                status['spatial_audio'] = "Dynamic"
-            elif val == 1:
-                status['spatial_audio'] = "Static"
-            elif val == 2:
-                status['spatial_audio'] = "Off"
+        if self.model.has_spatial_audio:
+            if ORD_RUN_SPATIAL_AUDIO in run_attrs:
+                val = run_attrs[ORD_RUN_SPATIAL_AUDIO][0]
+                if val == 0:
+                    status['spatial_audio'] = "Dynamic"
+                elif val == 1:
+                    status['spatial_audio'] = "Static"
+                elif val == 2:
+                    status['spatial_audio'] = "Off"
+                else:
+                    status['spatial_audio'] = f"Unknown ({val})"
             else:
-                status['spatial_audio'] = f"Unknown ({val})"
-        else:
-            status['spatial_audio'] = "Unknown"
+                status['spatial_audio'] = "Unknown"
 
-        if ORD_RUN_SPATIAL_SCENE in run_attrs:
-            scene_val = run_attrs[ORD_RUN_SPATIAL_SCENE][0]
-            scenes = {0: "Music", 1: "Sport", 2: "Movie"}
-            status['spatial_scene'] = scenes.get(scene_val, f"Unknown ({scene_val})")
+            if ORD_RUN_SPATIAL_SCENE in run_attrs:
+                scene_val = run_attrs[ORD_RUN_SPATIAL_SCENE][0]
+                scenes = {0: "Music", 1: "Sport", 2: "Movie"}
+                status['spatial_scene'] = scenes.get(scene_val, f"Unknown ({scene_val})")
+            else:
+                status['spatial_scene'] = "Unknown"
         else:
-            status['spatial_scene'] = "Unknown"
+            status['spatial_audio'] = "N/A"
+            status['spatial_scene'] = "N/A"
+
+        if self.model.has_anti_leak:
+            if ORD_RUN_ANTI_LEAK in run_attrs:
+                status['anti_leak'] = "Enabled" if run_attrs[ORD_RUN_ANTI_LEAK][0] == 1 else "Disabled"
+            else:
+                status['anti_leak'] = "Unknown"
+        else:
+            status['anti_leak'] = "N/A"
+
+        if self.model.has_gestures:
+            status['gestures'] = self.query_gestures()
+        else:
+            status['gestures'] = {}
 
         return status
 
@@ -519,15 +787,15 @@ class HaylouHeadphoneController:
         return resp is not None
 
     def set_anc_mode(self, mode):
-        if mode not in [0, 1, 2, 3, 4]:
+        if not self.model.has_anc or mode not in [0, 1, 2, 3, 4]:
             return False
         return self.set_setting(ATTR_WRITE_ANC_MODE, mode)
 
     def set_anc_level(self, level):
-        if level not in [0, 1, 2]:
+        if not self.model.has_anc_levels or level not in [0, 1, 2]:
             return False
         payload = bytes([4, 0, 11, 1, level])
-        resp = self.send_and_receive(OP_READ, 242, payload)
+        resp = self.send_and_receive(OP_READ, CMD_SET_DEVICE_CONFIG, payload)
         return resp is not None
 
     def set_game_mode(self, enable):
@@ -540,35 +808,58 @@ class HaylouHeadphoneController:
         return self.set_setting(ATTR_WRITE_MULTIPOINT, 1 if enable else 0)
 
     def set_ldac(self, enable):
+        if not self.model.has_ldac:
+            return False
         return self.set_setting(ATTR_WRITE_LDAC, 1 if enable else 0)
 
     def set_wear_detection(self, enable):
+        if not self.model.has_wear_detection:
+            return False
         return self.set_setting(ATTR_WRITE_WEAR_DETECTION, 1 if enable else 0)
 
     def set_auto_shutdown(self, val):
+        if not self.model.has_auto_shutdown:
+            return False
         return self.set_setting(ATTR_WRITE_AUTO_SHUTDOWN, val)
 
     def set_spatial_audio(self, mode):
+        if not self.model.has_spatial_audio:
+            return False
         return self.set_setting(ATTR_WRITE_SPATIAL_AUDIO, mode)
 
     def set_spatial_scene(self, scene_idx):
-        if scene_idx not in [0, 1, 2]:
+        if not self.model.has_spatial_audio or scene_idx not in [0, 1, 2]:
             return False
         return self.set_setting(ATTR_WRITE_SPATIAL_SCENE, scene_idx)
+
+    def set_anti_leak(self, enable):
+        if not self.model.has_anti_leak:
+            return False
+        return self.set_setting(ATTR_WRITE_ANTI_LEAK, 1 if enable else 0)
+
+    def set_auto_play(self, enable):
+        return self.set_setting(ATTR_WRITE_AUTO_PLAY, 1 if enable else 0)
+
+    def set_gesture(self, gesture_type, left_func, right_func):
+        if not self.model.has_gestures or gesture_type not in (1, 2, 3):
+            return False
+        payload = bytes([5, 0, 2, gesture_type, left_func, right_func])
+        resp = self.send_and_receive(OP_READ, CMD_SET_DEVICE_CONFIG, payload)
+        return resp is not None
 
     def set_device_name(self, name):
         name_bytes = name.encode('utf-8')
         if len(name_bytes) > 30:
             name_bytes = name_bytes[:30]
         payload = bytes([len(name_bytes) + 2, 0, 8]) + name_bytes
-        self.send_and_receive(OP_READ, 242, payload)
+        self.send_and_receive(OP_READ, CMD_SET_DEVICE_CONFIG, payload)
         time.sleep(0.15)
         curr_name = self.query_device_name()
         return curr_name == name
 
     def find_device(self, is_play=True, earbud_id=3):
         payload = bytes([4, 0, 9, 1 if is_play else 0, earbud_id])
-        self.send_and_receive(OP_READ, 242, payload)
+        self.send_and_receive(OP_READ, CMD_SET_DEVICE_CONFIG, payload)
         return True
 
     def get_current_eq_preset_val(self):
@@ -585,22 +876,28 @@ class HaylouHeadphoneController:
         return None
 
     def set_eq_preset(self, preset_idx):
-        write_val = EQ_WRITE_MAP.get(preset_idx, preset_idx)
-        valid_vals = (preset_idx, write_val)
+        if self.model.eq_type == "s40":
+            write_val = S40_EQ_WRITE_MAP.get(preset_idx, preset_idx)
+            valid_vals = (preset_idx, write_val)
+            presets_dict = S40_EQ_PRESETS
+        else:
+            write_val = preset_idx
+            valid_vals = (preset_idx,)
+            presets_dict = STANDARD_EQ_PRESETS
 
         # 1. Try Attribute-based (Attr ID 2, Opcode 8)
         self.set_setting(ATTR_WRITE_EQ_MODE, write_val)
         time.sleep(0.15)
         cur_val = self.get_current_eq_preset_val()
-        if cur_val in valid_vals or (cur_val is not None and EQ_PRESETS.get(cur_val) == EQ_PRESETS.get(preset_idx)):
+        if cur_val in valid_vals or (cur_val is not None and presets_dict.get(cur_val) == presets_dict.get(preset_idx)):
             return True
 
         # 2. Fallback to Config-based (Config ID 7, Opcode 242)
         payload = bytes([3, 0, 7, write_val])
-        self.send_and_receive(OP_READ, 242, payload)
+        self.send_and_receive(OP_READ, CMD_SET_DEVICE_CONFIG, payload)
         time.sleep(0.15)
         cur_val = self.get_current_eq_preset_val()
-        if cur_val in valid_vals or (cur_val is not None and EQ_PRESETS.get(cur_val) == EQ_PRESETS.get(preset_idx)):
+        if cur_val in valid_vals or (cur_val is not None and presets_dict.get(cur_val) == presets_dict.get(preset_idx)):
             return True
 
         return False
@@ -617,12 +914,17 @@ class HaylouHeadphoneController:
         file_len = len(file_bytes)
 
         params_data = bytes([(file_len >> 8) & 0xFF, file_len & 0xFF, 0x01]) + file_bytes
-        self.send_and_receive(OP_WRITE, 18, params_data)
+        self.send_and_receive(OP_WRITE, CMD_SEND_DEVICE_FILE, params_data)
         time.sleep(0.15)
 
         return self.set_eq_preset(240)
 
 # Device discovery & port detection
+
+HAYLOU_NAME_REGEX = re.compile(
+    r"(haylou|s40|s35|s30|s33|hd01|w1|mori|flowbuds|purfree|airfree|earhook|t003|t013|t016|t021|ht02|ht03|ht06|bc04|ow02|ow03|x1)",
+    re.IGNORECASE
+)
 
 def scan_paired_devices():
     devices = []
@@ -640,7 +942,7 @@ def scan_paired_devices():
                 if m and name:
                     raw_mac = m.group(1)
                     mac = ":".join(raw_mac[i:i+2] for i in range(0, 12, 2)).upper()
-                    if any(x in name.lower() for x in ["haylou", "s40", "s35", "s30"]):
+                    if HAYLOU_NAME_REGEX.search(name):
                         if (mac, name) not in devices:
                             devices.append((mac, name))
         except Exception as e:
@@ -653,7 +955,7 @@ def scan_paired_devices():
                 m = re.match(r"Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)", line)
                 if m:
                     mac, name = m.groups()
-                    if any(x in name.lower() for x in ["haylou", "s40", "s35", "s30"]):
+                    if HAYLOU_NAME_REGEX.search(name):
                         devices.append((mac, name))
             return devices
         except FileNotFoundError:
@@ -663,7 +965,6 @@ def scan_paired_devices():
             return []
 
 def find_control_port(mac_address):
-    # Try standard port 10 first
     battery_req = START_PREFIX + bytes([OP_READ, CMD_GET_DEVICE_INFO, 0x00, 0x05, 0x01, 0x00, 0x00, 0x00, 0x04]) + END_SUFFIX
     try:
         s = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
@@ -677,7 +978,6 @@ def find_control_port(mac_address):
     except Exception:
         pass
 
-    # Probe fallback ports
     common_ports = [1, 3, 4, 5, 2, 6, 7, 8, 9, 11, 12, 13]
     for port in common_ports:
         try:
@@ -724,47 +1024,62 @@ def draw_line(label, value_str, width=58):
 def draw_dashboard(status, msg=""):
     print("\033[H\033[2J", end="")
 
+    model_info = status.get('model_info', {})
+    model_name = model_info.get('name', 'HAYLOU DEVICE').upper()
+    caps = model_info.get('capabilities', {})
+
     draw_top_border()
-    draw_centered_line(f"{BOLD}{COLOR_TITLE}HLCONTROL{RESET}")
+    draw_centered_line(f"{BOLD}{COLOR_TITLE}{model_name} CONTROL{RESET}")
     draw_separator()
 
     dev_name = status.get('device_name', 'Unknown')
     draw_line("Device Name", f"{COLOR_VAL}{dev_name}{RESET}")
 
-    battery_str = status.get('battery', 'Unknown')
-    if battery_str != 'Unknown' and '%' in battery_str:
-        try:
-            pct = int(battery_str.replace('%', ''))
-            bar_len = pct // 10
-            bar = "█" * bar_len + "░" * (10 - bar_len)
-            lvl_color = COLOR_ON if pct > 50 else (COLOR_TITLE if pct > 20 else COLOR_OFF)
-            battery_display = f"{lvl_color}[{bar}] {pct}%{RESET}"
-        except ValueError:
-            battery_display = f"{COLOR_UNKNOWN}{battery_str}{RESET}"
+    # Battery Rendering
+    b_left = status.get('battery_left')
+    b_right = status.get('battery_right')
+    b_case = status.get('battery_case')
+    if b_left is not None and b_right is not None:
+        case_txt = f" | Case: {b_case}" if b_case else ""
+        draw_line("TWS Battery", f"{COLOR_ON}L: {b_left} | R: {b_right}{case_txt}{RESET}")
     else:
-        battery_display = f"{COLOR_UNKNOWN}Unknown{RESET}"
-    draw_line("Battery State", battery_display)
+        battery_str = status.get('battery', 'Unknown')
+        if battery_str != 'Unknown' and '%' in battery_str:
+            try:
+                pct = int(battery_str.replace('%', '').strip())
+                bar_len = pct // 10
+                bar = "█" * bar_len + "░" * (10 - bar_len)
+                lvl_color = COLOR_ON if pct > 50 else (COLOR_TITLE if pct > 20 else COLOR_OFF)
+                battery_display = f"{lvl_color}[{bar}] {pct}%{RESET}"
+            except ValueError:
+                battery_display = f"{COLOR_UNKNOWN}{battery_str}{RESET}"
+        else:
+            battery_display = f"{COLOR_UNKNOWN}Unknown{RESET}"
+        draw_line("Battery State", battery_display)
 
     wear_state = status.get('wear_state', 'Unknown')
     wear_color = COLOR_ON if wear_state == "Worn" else (COLOR_TITLE if wear_state == "Off-Ear" else COLOR_UNKNOWN)
     draw_line("Wear State", f"{wear_color}{wear_state}{RESET}")
     draw_separator()
 
-    anc = status.get('anc_mode', 'Unknown')
-    anc_colors = {
-        "Normal (Off)": COLOR_VAL,
-        "ANC On": COLOR_ON,
-        "Transparency": COLOR_MENU_NUM,
-        "Wind Noise (KANG_FENG)": COLOR_TITLE,
-        "Adaptive Auto-ANC": "\033[38;2;155;89;182m"
-    }
-    anc_col = anc_colors.get(anc, COLOR_UNKNOWN)
-    draw_line("ANC Mode", f"{anc_col}{anc}{RESET}")
+    # ANC Display
+    if caps.get('has_anc', True):
+        anc = status.get('anc_mode', 'Unknown')
+        anc_colors = {
+            "Normal (Off)": COLOR_VAL,
+            "ANC On": COLOR_ON,
+            "Transparency": COLOR_MENU_NUM,
+            "Wind Noise (KANG_FENG)": COLOR_TITLE,
+            "Adaptive Auto-ANC": "\033[38;2;155;89;182m"
+        }
+        anc_col = anc_colors.get(anc, COLOR_UNKNOWN)
+        draw_line("ANC Mode", f"{anc_col}{anc}{RESET}")
 
-    if anc in ["ANC On", "Adaptive Auto-ANC"]:
-        anc_lvl = status.get('anc_level', 'Unknown')
-        draw_line("ANC Level", f"{COLOR_VAL}{anc_lvl}{RESET}")
+        if caps.get('has_anc_levels', True) and anc in ["ANC On", "Adaptive Auto-ANC"]:
+            anc_lvl = status.get('anc_level', 'Unknown')
+            draw_line("ANC Level", f"{COLOR_VAL}{anc_lvl}{RESET}")
 
+    # EQ Preset Display
     eq = status.get('eq_mode', 'Unknown')
     draw_line("EQ Preset", f"{COLOR_VAL}{eq}{RESET}")
 
@@ -774,31 +1089,51 @@ def draw_dashboard(status, msg=""):
             return f"{COLOR_ON}[ ENABLED ]{RESET}"
         elif val == 'Disabled':
             return f"{COLOR_OFF}[ DISABLED ]{RESET}"
+        elif val == 'N/A':
+            return f"{COLOR_UNKNOWN}[ N/A ]{RESET}"
         return f"{COLOR_UNKNOWN}[ UNKNOWN ]{RESET}"
 
     draw_line("Game Mode", get_toggle_display("game_mode"))
     draw_line("Wind Noise Red.", get_toggle_display("wind_noise"))
     draw_line("Multipoint", get_toggle_display("multipoint"))
-    draw_line("LDAC Support", get_toggle_display("ldac"))
-    draw_line("Wear Detection", get_toggle_display("wear_detection"))
 
-    spatial_val = status.get('spatial_audio', 'Off')
-    if spatial_val == 'Off':
-        spatial_display = f"{COLOR_OFF}[ OFF ]{RESET}"
-    elif spatial_val in ('Static', 'Dynamic'):
-        spatial_display = f"{COLOR_ON}[ {spatial_val.upper()} ]{RESET}"
-    else:
-        spatial_display = f"{COLOR_UNKNOWN}[ {spatial_val} ]{RESET}"
-    draw_line("Spatial Audio", spatial_display)
+    if caps.get('has_ldac', False):
+        draw_line("LDAC Support", get_toggle_display("ldac"))
 
-    if spatial_val != 'Off':
-        scene_str = status.get('spatial_scene', 'Unknown')
-        draw_line("Spatial Scene", f"{COLOR_VAL}{scene_str}{RESET}")
-    else:
-        draw_line("Spatial Scene", f"{COLOR_UNKNOWN}N/A (Disabled){RESET}")
+    if caps.get('has_wear_detection', False):
+        draw_line("Wear Detection", get_toggle_display("wear_detection"))
 
-    shutdown_str = status.get('auto_shutdown', 'Unknown')
-    draw_line("Auto-Shutdown", f"{COLOR_VAL}{shutdown_str}{RESET}")
+    if caps.get('has_anti_leak', False):
+        draw_line("Anti-Sound Leak", get_toggle_display("anti_leak"))
+
+    if caps.get('has_spatial_audio', False):
+        spatial_val = status.get('spatial_audio', 'Off')
+        if spatial_val == 'Off':
+            spatial_display = f"{COLOR_OFF}[ OFF ]{RESET}"
+        elif spatial_val in ('Static', 'Dynamic'):
+            spatial_display = f"{COLOR_ON}[ {spatial_val.upper()} ]{RESET}"
+        else:
+            spatial_display = f"{COLOR_UNKNOWN}[ {spatial_val} ]{RESET}"
+        draw_line("Spatial Audio", spatial_display)
+
+        if spatial_val != 'Off':
+            scene_str = status.get('spatial_scene', 'Unknown')
+            draw_line("Spatial Scene", f"{COLOR_VAL}{scene_str}{RESET}")
+
+    if caps.get('has_auto_shutdown', True):
+        shutdown_str = status.get('auto_shutdown', 'Unknown')
+        draw_line("Auto-Shutdown", f"{COLOR_VAL}{shutdown_str}{RESET}")
+
+    # Gestures preview if TWS
+    gestures = status.get('gestures', {})
+    if gestures:
+        draw_separator()
+        draw_centered_line(f"{BOLD}Touch Gestures{RESET}")
+        for g_id, g_info in gestures.items():
+            t_name = g_info.get("type_name", f"Type {g_id}")
+            l_fn = g_info.get("left_name", "N/A")
+            r_fn = g_info.get("right_name", "N/A")
+            draw_line(t_name[:16], f"{COLOR_VAL}L: {l_fn} | R: {r_fn}{RESET}")
 
     draw_bottom_border()
 
@@ -807,19 +1142,19 @@ def draw_dashboard(status, msg=""):
     else:
         print()
 
-def print_menu():
+def print_menu(model):
     def print_col(left_num, left_text, right_num, right_text):
-        left_str = f"  {COLOR_MENU_NUM}[{left_num}]{RESET} {left_text}"
-        visible_left = f"  [{left_num}] {left_text}"
-        spaces = 30 - len(visible_left)
-        right_str = f"{COLOR_MENU_NUM}[{right_num}]{RESET} {right_text}"
+        left_str = f"  {COLOR_MENU_NUM}[{left_num:>2}]{RESET} {left_text}"
+        visible_left = f"  [{left_num:>2}] {left_text}"
+        spaces = 32 - len(visible_left)
+        right_str = f"{COLOR_MENU_NUM}[{right_num:>2}]{RESET} {right_text}"
         print(f"{left_str}{' ' * spaces}{right_str}")
 
     print_col("1", "Set ANC Mode", "7", "Set EQ Preset")
-    print_col("2", "Toggle Game Mode", "8", "Toggle Spatial Audio")
-    print_col("3", "Toggle Wind Noise", "9", "Set Spatial Audio Scene")
+    print_col("2", "Toggle Game Mode", "8", "Toggle Spatial Audio" if model.has_spatial_audio else "Set Gestures")
+    print_col("3", "Toggle Wind Noise", "9", "Set Spatial Audio Scene" if model.has_spatial_audio else "Toggle Anti-Leak")
     print_col("4", "Toggle Multipoint", "10", "Set Auto-Shutdown Timer")
-    print_col("5", "Toggle LDAC (Reboot)", "11", "Rename Device")
+    print_col("5", "Toggle LDAC (Reboot)" if model.has_ldac else "Toggle Auto-Play", "11", "Rename Device")
     print_col("6", "Toggle Wear Detection", "12", "Find My Device (Ring)")
     print(f"{' ' * 4} [13] Refresh Status {' ' * 8} [0] Disconnect & Exit")
 
@@ -848,7 +1183,8 @@ def interactive_menu(controller):
             msg = "Connection re-established."
             continue
 
-        print_menu()
+        model = controller.model
+        print_menu(model)
 
         try:
             choice = input(f"\n{BOLD}Select option [0-13]:{RESET} ").strip()
@@ -859,6 +1195,9 @@ def interactive_menu(controller):
         if choice == "0":
             break
         elif choice == "1":
+            if not model.has_anc:
+                msg = "ANC is not supported on this model."
+                continue
             print("\nSelect ANC Mode:")
             print(" 0. Normal (Off)")
             print(" 1. ANC On")
@@ -891,99 +1230,143 @@ def interactive_menu(controller):
             success = controller.set_multipoint(enable)
             msg = f"Multipoint {'enabled' if enable else 'disabled'}." if success else "Failed to update Multipoint."
         elif choice == "5":
-            current = status.get('ldac', 'Disabled')
-            enable = (current != "Enabled")
-            print(f"\nToggling LDAC to {'ON' if enable else 'OFF'}...")
-            print("Headphones will reboot to apply this setting.")
-            success = controller.set_ldac(enable)
-            if success:
-                print("Setting accepted. Headphones are rebooting...")
-                controller.disconnect()
-                time.sleep(1.0)
-                reconnected = False
-                while not reconnected:
-                    try:
-                        time.sleep(3.0)
-                        reconnected = controller.connect()
-                    except (KeyboardInterrupt, SystemExit):
-                        print("\nExiting.")
-                        sys.exit(0)
-                    except Exception:
-                        pass
-                msg = f"Reconnected! LDAC is now {'Enabled' if enable else 'Disabled'}."
+            if model.has_ldac:
+                current = status.get('ldac', 'Disabled')
+                enable = (current != "Enabled")
+                print(f"\nToggling LDAC to {'ON' if enable else 'OFF'}...")
+                print("Headphones will reboot to apply this setting.")
+                success = controller.set_ldac(enable)
+                if success:
+                    print("Setting accepted. Headphones are rebooting...")
+                    controller.disconnect()
+                    time.sleep(1.0)
+                    reconnected = False
+                    while not reconnected:
+                        try:
+                            time.sleep(3.0)
+                            reconnected = controller.connect()
+                        except (KeyboardInterrupt, SystemExit):
+                            print("\nExiting.")
+                            sys.exit(0)
+                        except Exception:
+                            pass
+                    msg = f"Reconnected! LDAC is now {'Enabled' if enable else 'Disabled'}."
+                else:
+                    msg = "Failed to toggle LDAC."
             else:
-                msg = "Failed to toggle LDAC."
+                current = status.get('auto_play', 'Disabled')
+                enable = (current != "Enabled")
+                success = controller.set_auto_play(enable)
+                msg = f"In-Ear Auto Play {'enabled' if enable else 'disabled'}." if success else "Failed to update Auto-Play."
         elif choice == "6":
+            if not model.has_wear_detection:
+                msg = "Wear Detection is not supported on this model."
+                continue
             current = status.get('wear_detection', 'Disabled')
             enable = (current != "Enabled")
             success = controller.set_wear_detection(enable)
             msg = f"Wear Detection {'enabled' if enable else 'disabled'}." if success else "Failed to update Wear Detection."
         elif choice == "7":
-            print("\nSelect EQ Preset:")
-            print(" 0. Default")
-            print(" 1. Subwoofer")
-            print(" 2. Rock")
-            print(" 3. Soft")
-            print(" 4. Classical")
+            presets_map = S40_EQ_PRESETS if model.eq_type == "s40" else STANDARD_EQ_PRESETS
+            print(f"\nSelect EQ Preset ({model.name}):")
+            if model.eq_type == "s40":
+                print(" 0. Default\n 1. Subwoofer\n 2. Rock\n 3. Soft\n 4. Classical")
+                valid_opts = ['0', '1', '2', '3', '4']
+            else:
+                for k in range(9):
+                    print(f" {k}. {presets_map.get(k)}")
+                valid_opts = [str(k) for k in range(9)]
             try:
-                preset_choice = input("Select preset [0-4]: ").strip()
+                preset_choice = input(f"Select preset [{valid_opts[0]}-{valid_opts[-1]}]: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print()
                 continue
-            if preset_choice in ['0', '1', '2', '3', '4']:
+            if preset_choice in valid_opts:
                 idx = int(preset_choice)
                 success = controller.set_eq_preset(idx)
-                msg = f"EQ Preset set to {EQ_PRESETS.get(idx, idx)}." if success else "Failed to set EQ Preset."
+                msg = f"EQ Preset set to {presets_map.get(idx, idx)}." if success else "Failed to set EQ Preset."
             else:
                 msg = "Invalid preset choice."
         elif choice == "8":
-            print("\nSelect Spatial Audio Mode:")
-            print(" 0. Off")
-            print(" 1. Static")
-            print(" 2. Dynamic")
-            try:
-                spatial_choice = input("Select mode [0-2]: ").strip()
-            except (KeyboardInterrupt, EOFError):
-                print()
-                continue
-            if spatial_choice in ['0', '1', '2']:
-                m = int(spatial_choice)
-                val_map = {0: 2, 1: 1, 2: 0}
-                success = controller.set_spatial_audio(val_map[m])
-                modes_desc = {0: "Off", 1: "Static", 2: "Dynamic"}
-                msg = f"Spatial Audio mode set to {modes_desc[m]}." if success else "Failed to set Spatial Audio mode."
+            if model.has_spatial_audio:
+                print("\nSelect Spatial Audio Mode:")
+                print(" 0. Off\n 1. Static\n 2. Dynamic")
+                try:
+                    spatial_choice = input("Select mode [0-2]: ").strip()
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    continue
+                if spatial_choice in ['0', '1', '2']:
+                    m = int(spatial_choice)
+                    val_map = {0: 2, 1: 1, 2: 0}
+                    success = controller.set_spatial_audio(val_map[m])
+                    modes_desc = {0: "Off", 1: "Static", 2: "Dynamic"}
+                    msg = f"Spatial Audio set to {modes_desc[m]}." if success else "Failed to set Spatial Audio."
+                else:
+                    msg = "Invalid Spatial Audio choice."
+            elif model.has_gestures:
+                print("\nSelect Touch Gesture to Configure:")
+                print(" 1. Double Tap\n 2. Triple Tap\n 3. Long Press")
+                try:
+                    g_type_in = input("Select gesture [1-3]: ").strip()
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    continue
+                if g_type_in in ['1', '2', '3']:
+                    g_type = int(g_type_in)
+                    print("\nAvailable Gesture Actions:")
+                    for f_id, f_name in GESTURE_FUNCTIONS.items():
+                        print(f" {f_id:>3}. {f_name}")
+                    try:
+                        l_fn_in = input("Select LEFT earbud action: ").strip()
+                        r_fn_in = input("Select RIGHT earbud action: ").strip()
+                        l_fn = int(l_fn_in)
+                        r_fn = int(r_fn_in)
+                        if l_fn in GESTURE_FUNCTIONS and r_fn in GESTURE_FUNCTIONS:
+                            success = controller.set_gesture(g_type, l_fn, r_fn)
+                            msg = f"Updated {GESTURE_TYPES[g_type]} gesture." if success else "Failed to update gesture."
+                        else:
+                            msg = "Invalid function code."
+                    except (ValueError, KeyboardInterrupt, EOFError):
+                        msg = "Invalid action input."
+                else:
+                    msg = "Invalid gesture type selection."
             else:
-                msg = "Invalid Spatial Audio mode choice."
+                msg = "Option not applicable to this model."
         elif choice == "9":
-            print("\nSelect Spatial Audio Scene:")
-            print(" 0. Music")
-            print(" 1. Sport")
-            print(" 2. Movie")
-            try:
-                scene_choice = input("Select scene [0-2]: ").strip()
-            except (KeyboardInterrupt, EOFError):
-                print()
-                continue
-            if scene_choice in ['0', '1', '2']:
-                idx = int(scene_choice)
-                success = controller.set_spatial_scene(idx)
-                scenes = {0: "Music", 1: "Sport", 2: "Movie"}
-                msg = f"Spatial Scene updated to {scenes[idx]}." if success else "Failed to update Spatial Scene."
+            if model.has_spatial_audio:
+                print("\nSelect Spatial Audio Scene:")
+                print(" 0. Music\n 1. Sport\n 2. Movie")
+                try:
+                    scene_choice = input("Select scene [0-2]: ").strip()
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    continue
+                if scene_choice in ['0', '1', '2']:
+                    idx = int(scene_choice)
+                    success = controller.set_spatial_scene(idx)
+                    scenes = {0: "Music", 1: "Sport", 2: "Movie"}
+                    msg = f"Spatial Scene set to {scenes[idx]}." if success else "Failed to update Spatial Scene."
+                else:
+                    msg = "Invalid Spatial Scene choice."
+            elif model.has_anti_leak:
+                current = status.get('anti_leak', 'Disabled')
+                enable = (current != "Enabled")
+                success = controller.set_anti_leak(enable)
+                msg = f"Anti-Sound Leak {'enabled' if enable else 'disabled'}." if success else "Failed to update Anti-Sound Leak."
             else:
-                msg = "Invalid Spatial Scene choice."
+                msg = "Option not applicable to this model."
         elif choice == "10":
+            if not model.has_auto_shutdown:
+                msg = "Auto-Shutdown timer is not supported on this model."
+                continue
             print("\nSelect Auto-Shutdown Timer Duration:")
-            print(" 0. 30 Minutes")
-            print(" 1. 1 Hour")
-            print(" 2. 3 Hours")
-            print(" 3. 5 Hours")
-            print(" 4. Never (Disabled)")
+            print(" 0. 30 Minutes\n 1. 1 Hour\n 2. 3 Hours\n 3. 5 Hours\n 4. Never (Disabled)")
             try:
                 timer_choice = input("Select duration [0-4]: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print()
                 continue
-
             timer_map = {
                 '0': (1, "30 minutes"),
                 '1': (2, "1 hour"),
@@ -994,25 +1377,24 @@ def interactive_menu(controller):
             if timer_choice in timer_map:
                 byte_val, display_name = timer_map[timer_choice]
                 success = controller.set_auto_shutdown(byte_val)
-                msg = f"Auto-Shutdown timer set to {display_name}." if success else "Failed to update Auto-Shutdown timer."
+                msg = f"Auto-Shutdown set to {display_name}." if success else "Failed to update Auto-Shutdown."
             else:
                 msg = "Invalid timer selection."
         elif choice == "11":
             try:
-                new_name = input("\nEnter new Bluetooth name for the device: ").strip()
+                new_name = input("\nEnter new Bluetooth name: ").strip()
             except (KeyboardInterrupt, EOFError):
                 print()
                 continue
             if new_name:
                 print(f"Renaming device to '{new_name}'...")
                 success = controller.set_device_name(new_name)
-                msg = f"Device successfully renamed to '{new_name}'." if success else "Failed to rename device."
+                msg = f"Device renamed to '{new_name}'." if success else "Failed to rename device."
             else:
                 msg = "Device name cannot be empty."
         elif choice == "12":
             print("\nFind My Device:")
-            print(" 1. Start Ringing")
-            print(" 0. Stop Ringing")
+            print(" 1. Start Ringing\n 0. Stop Ringing")
             try:
                 find_choice = input("Select action [0, 1]: ").strip()
             except (KeyboardInterrupt, EOFError):
@@ -1091,6 +1473,10 @@ def json_mode_loop(controller):
                             controller.disconnect()
                     elif action == "set_wear_detection":
                         success = controller.set_wear_detection(bool(value))
+                    elif action == "set_anti_leak":
+                        success = controller.set_anti_leak(bool(value))
+                    elif action == "set_auto_play":
+                        success = controller.set_auto_play(bool(value))
                     elif action == "set_auto_shutdown":
                         success = controller.set_auto_shutdown(int(value))
                     elif action == "set_spatial_audio":
@@ -1115,6 +1501,13 @@ def json_mode_loop(controller):
                     elif action == "set_custom_eq":
                         gains = value if isinstance(value, list) else (cmd.get("gains", []) if isinstance(cmd, dict) else [])
                         success = controller.set_custom_eq(gains)
+                    elif action == "set_gesture":
+                        g_type = int(cmd.get("gesture_type", value if isinstance(value, int) else 1))
+                        l_fn = int(cmd.get("left_func", cmd.get("left", 255)))
+                        r_fn = int(cmd.get("right_func", cmd.get("right", 255)))
+                        success = controller.set_gesture(g_type, l_fn, r_fn)
+                    elif action == "get_gestures":
+                        success = True
                     elif action == "find_device":
                         play = bool(value) if isinstance(value, bool) else True
                         earbud_id = int(cmd.get("earbud_id", 3)) if isinstance(cmd, dict) else 3

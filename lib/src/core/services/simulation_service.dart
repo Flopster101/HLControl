@@ -211,6 +211,14 @@ class SimulationHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setAntiLeak(bool enabled) async {
+    _updateStatus(_status.copyWith(antiLeak: enabled));
+  }
+
+  @override
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {}
+
+  @override
   Future<void> renameDevice(String newName) async {
     _updateStatus(_status.copyWith(deviceName: newName));
   }

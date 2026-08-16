@@ -18,9 +18,9 @@ class DesktopHeadphoneService implements HeadphoneService {
   late HeadphoneStatus _status;
   late StreamController<HeadphoneStatus> _controller;
   Process? _process;
+  StreamSubscription<String>? _stdoutSub;
+  StreamSubscription<String>? _stderrSub;
   File? _scriptFile;
-  StreamSubscription? _stdoutSub;
-  StreamSubscription? _stderrSub;
 
   @override
   Stream<HeadphoneStatus> get statusStream => _controller.stream;
@@ -29,29 +29,38 @@ class DesktopHeadphoneService implements HeadphoneService {
   HeadphoneStatus get currentStatus => _status;
 
   Future<String> _findPythonExecutable() async {
-    final candidates = Platform.isWindows
-        ? ['python', 'python3', 'py', 'pythonw']
-        : ['python3', 'python'];
-
-    for (final cmd in candidates) {
-      try {
-        final result = await Process.run(cmd, ['--version']);
-        if (result.exitCode == 0) {
-          return cmd;
-        }
-      } catch (_) {}
+    if (Platform.isWindows) {
+      for (final cmd in ['python.exe', 'python', 'py.exe', 'py']) {
+        try {
+          final result = await Process.run('where', [cmd]);
+          if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
+            return cmd;
+          }
+        } catch (_) {}
+      }
+      return 'python';
+    } else {
+      for (final cmd in ['python3', 'python']) {
+        try {
+          final result = await Process.run('which', [cmd]);
+          if (result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty) {
+            return cmd;
+          }
+        } catch (_) {}
+      }
+      return 'python3';
     }
-    return Platform.isWindows ? 'python' : 'python3';
   }
 
   Future<File> _extractScript() async {
     if (_scriptFile != null && await _scriptFile!.exists()) {
       return _scriptFile!;
     }
+
     final tempDir = Directory.systemTemp;
     final file = File(p.join(tempDir.path, 'hlcontrol_haylou_control.py'));
 
-    // Always extract/overwrite on startup to ensure latest version is run
+    // Extract asset python script
     final byteData = await rootBundle.load('assets/scripts/haylou_control.py');
     await file.writeAsBytes(
       byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
@@ -139,21 +148,33 @@ class DesktopHeadphoneService implements HeadphoneService {
         const psCmd = 'Get-PnpDevice -Class Bluetooth -Status OK | Select-Object -Property FriendlyName, InstanceId | ConvertTo-Json -Compress';
         final result = await Process.run('powershell', ['-NoProfile', '-NonInteractive', '-Command', psCmd]);
         if (result.exitCode == 0) {
-          final List<BluetoothDevice> devices = [];
-          final raw = result.stdout.toString().trim();
-          if (raw.isNotEmpty) {
-            final decoded = json.decode(raw);
-            final list = decoded is List ? decoded : [decoded];
-            final devRegex = RegExp(r'DEV_([0-9A-Fa-f]{12})');
-            for (final item in list) {
-              final name = (item['FriendlyName'] as String?)?.trim() ?? '';
-              final instId = (item['InstanceId'] as String?) ?? '';
-              final match = devRegex.firstMatch(instId);
-              if (match != null && name.isNotEmpty) {
-                final rawMac = match.group(1)!;
-                final mac = List.generate(6, (i) => rawMac.substring(i * 2, i * 2 + 2)).join(':').toUpperCase();
-                if (!devices.any((d) => d.macAddress.toUpperCase() == mac)) {
-                  devices.add(BluetoothDevice(macAddress: mac, name: name));
+          final out = result.stdout.toString().trim();
+          if (out.isEmpty) return [];
+
+          dynamic decoded;
+          try {
+            decoded = json.decode(out);
+          } catch (_) {
+            return [];
+          }
+
+          final List<dynamic> items = decoded is List ? decoded : [decoded];
+          final devices = <BluetoothDevice>[];
+
+          final haylouRegex = RegExp(r'(haylou|s40|s35|s30|s33|hd01|w1|mori|flowbuds|purfree|airfree|earhook|t003|t013|t016|t021|ht02|ht03|ht06|bc04|ow02|ow03|x1)', caseSensitive: false);
+
+          for (final item in items) {
+            final name = item['FriendlyName'] as String? ?? '';
+            final instanceId = item['InstanceId'] as String? ?? '';
+
+            final match = RegExp(r'DEV_([0-9A-Fa-f]{12})').firstMatch(instanceId);
+            if (match != null && name.isNotEmpty) {
+              final rawMac = match.group(1)!;
+              final formattedMac = List.generate(6, (i) => rawMac.substring(i * 2, i * 2 + 2)).join(':').toUpperCase();
+
+              if (haylouRegex.hasMatch(name)) {
+                if (!devices.any((d) => d.macAddress == formattedMac)) {
+                  devices.add(BluetoothDevice(macAddress: formattedMac, name: name));
                 }
               }
             }
@@ -163,19 +184,21 @@ class DesktopHeadphoneService implements HeadphoneService {
       } catch (_) {}
       return [];
     } else {
-      // Linux
       try {
         final result = await Process.run('bluetoothctl', ['devices']);
         if (result.exitCode == 0) {
-          final List<BluetoothDevice> devices = [];
-          final output = result.stdout.toString();
-          final regex = RegExp(r'Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)');
-          for (var line in output.split('\n')) {
-            final match = regex.firstMatch(line);
+          final lines = result.stdout.toString().split('\n');
+          final devices = <BluetoothDevice>[];
+          final regex = RegExp(r'^Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)$');
+
+          final haylouRegex = RegExp(r'(haylou|s40|s35|s30|s33|hd01|w1|mori|flowbuds|purfree|airfree|earhook|t003|t013|t016|t021|ht02|ht03|ht06|bc04|ow02|ow03|x1)', caseSensitive: false);
+
+          for (final line in lines) {
+            final match = regex.firstMatch(line.trim());
             if (match != null) {
               final mac = match.group(1)!;
               final name = match.group(2)!.trim();
-              if (name.isNotEmpty) {
+              if (haylouRegex.hasMatch(name)) {
                 devices.add(BluetoothDevice(macAddress: mac, name: name));
               }
             }
@@ -191,7 +214,6 @@ class DesktopHeadphoneService implements HeadphoneService {
   Future<List<BluetoothDevice>> scanDevices() async {
     if (!Platform.isWindows) {
       try {
-        // Run background scan for 4 seconds on Linux to discover nearby devices and update the Bluez cache
         await Process.run('timeout', ['4', 'bluetoothctl', 'scan', 'on']);
       } catch (_) {}
     }
@@ -213,12 +235,21 @@ class DesktopHeadphoneService implements HeadphoneService {
         } else if (statusStr == 'connecting') {
           _updateStatus(_status.copyWith(isConnecting: true, isConnected: false));
         } else if (statusStr == 'connected') {
-          // Parse battery
+          // Parse single and TWS battery
           final batteryStr = jsonMap['battery'] as String?;
           int batteryVal = _status.batteryPercent;
-          if (batteryStr != null && batteryStr != 'Unknown') {
+          if (batteryStr != null && batteryStr != 'Unknown' && !batteryStr.contains('L:')) {
             batteryVal = int.tryParse(batteryStr.replaceAll('%', '').trim()) ?? _status.batteryPercent;
           }
+
+          int? parseBatteryPct(String? val) {
+            if (val == null) return null;
+            return int.tryParse(val.replaceAll('%', '').trim());
+          }
+
+          final bLeft = parseBatteryPct(jsonMap['battery_left'] as String?);
+          final bRight = parseBatteryPct(jsonMap['battery_right'] as String?);
+          final bCase = parseBatteryPct(jsonMap['battery_case'] as String?);
 
           // Parse ANC mode & intensity
           final rawAnc = jsonMap['anc_mode'] as String?;
@@ -239,7 +270,7 @@ class DesktopHeadphoneService implements HeadphoneService {
           final eqStr = (rawEq != null && rawEq != 'Unknown') ? rawEq : _status.eqPreset;
 
           bool? parseNullableBool(String? val) {
-            if (val == null || val == 'Unknown') return null;
+            if (val == null || val == 'Unknown' || val == 'N/A') return null;
             return val == 'Enabled';
           }
 
@@ -248,10 +279,11 @@ class DesktopHeadphoneService implements HeadphoneService {
           final multiVal = parseNullableBool(jsonMap['multipoint'] as String?) ?? _status.multipoint;
           final ldacVal = parseNullableBool(jsonMap['ldac'] as String?) ?? _status.ldac;
           final wearVal = parseNullableBool(jsonMap['wear_detection'] as String?) ?? _status.wearDetection;
+          final antiLeakVal = parseNullableBool(jsonMap['anti_leak'] as String?) ?? _status.antiLeak;
 
           final shutdownStr = jsonMap['auto_shutdown'] as String?;
           int? shutdownIdx = _status.autoShutdownIndex;
-          if (shutdownStr != null && shutdownStr != 'Unknown') {
+          if (shutdownStr != null && shutdownStr != 'Unknown' && shutdownStr != 'N/A') {
             if (shutdownStr.contains('30')) {
               shutdownIdx = 0;
             } else if (shutdownStr.contains('1 hour') || shutdownStr.contains('1 Hour')) {
@@ -266,15 +298,21 @@ class DesktopHeadphoneService implements HeadphoneService {
           }
 
           final rawSpatial = jsonMap['spatial_audio'] as String?;
-          final spatialStr = (rawSpatial != null && rawSpatial != 'Unknown') ? rawSpatial : _status.spatialAudioMode;
+          final spatialStr = (rawSpatial != null && rawSpatial != 'Unknown' && rawSpatial != 'N/A') ? rawSpatial : _status.spatialAudioMode;
           final rawScene = jsonMap['spatial_scene'] as String?;
-          final sceneStr = (rawScene != null && rawScene != 'Unknown') ? rawScene : _status.spatialScene;
+          final sceneStr = (rawScene != null && rawScene != 'Unknown' && rawScene != 'N/A') ? rawScene : _status.spatialScene;
+
+          final modelInfoMap = jsonMap['model_info'] as Map<String, dynamic>? ?? _status.modelInfo;
+          final gesturesMap = jsonMap['gestures'] as Map<String, dynamic>? ?? _status.gestures;
 
           _updateStatus(HeadphoneStatus(
             isConnected: true,
             isConnecting: false,
             deviceName: jsonMap['device_name'] ?? _status.deviceName,
             batteryPercent: batteryVal,
+            batteryLeft: bLeft ?? _status.batteryLeft,
+            batteryRight: bRight ?? _status.batteryRight,
+            batteryCase: bCase ?? _status.batteryCase,
             ancMode: ancStr,
             ancIntensity: ancIntensity,
             eqPreset: eqStr,
@@ -283,9 +321,12 @@ class DesktopHeadphoneService implements HeadphoneService {
             multipoint: multiVal,
             ldac: ldacVal,
             wearDetection: wearVal,
+            antiLeak: antiLeakVal,
             autoShutdownIndex: shutdownIdx,
             spatialAudioMode: spatialStr,
             spatialScene: sceneStr,
+            modelInfo: modelInfoMap,
+            gestures: gesturesMap,
             error: jsonMap['error'],
           ));
         }
@@ -362,6 +403,12 @@ class DesktopHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setAntiLeak(bool enabled) async {
+    _updateStatus(_status.copyWith(antiLeak: enabled));
+    _sendCommand('set_anti_leak', enabled);
+  }
+
+  @override
   Future<void> setAutoShutdown(int timerVal) async {
     int idx;
     switch (timerVal) {
@@ -416,16 +463,14 @@ class DesktopHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setEqPreset(int presetIdx) async {
+    final standardPresets = ['Default', 'Vocal', 'Rock', 'Classical', 'Popularity', 'Bass', 'Subwoofer', 'Soft', 'Outdoor'];
     String presetName;
-    switch (presetIdx) {
-      case 0: presetName = 'Default'; break;
-      case 1: presetName = 'Subwoofer'; break;
-      case 2: presetName = 'Rock'; break;
-      case 3: presetName = 'Soft'; break;
-      case 4: presetName = 'Classical'; break;
-      case 15:
-      case 240: presetName = 'Custom/Customize'; break;
-      default: presetName = 'Default';
+    if (presetIdx == 15 || presetIdx == 240) {
+      presetName = 'Custom/Customize';
+    } else if (presetIdx >= 0 && presetIdx < standardPresets.length) {
+      presetName = standardPresets[presetIdx];
+    } else {
+      presetName = 'Default';
     }
     _updateStatus(_status.copyWith(eqPreset: presetName));
     _sendCommand('set_eq_preset', presetIdx);
@@ -435,6 +480,19 @@ class DesktopHeadphoneService implements HeadphoneService {
   Future<void> setCustomEq(List<double> gains) async {
     _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
     _sendCommand('set_custom_eq', gains);
+  }
+
+  @override
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {
+    if (_process == null) return;
+    final cmd = json.encode({
+      'action': 'set_gesture',
+      'command': 'set_gesture',
+      'gesture_type': gestureType,
+      'left_func': leftFunc,
+      'right_func': rightFunc,
+    });
+    _process!.stdin.writeln(cmd);
   }
 
   @override

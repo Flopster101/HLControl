@@ -3,6 +3,9 @@ class HeadphoneStatus {
   final bool isConnecting;
   final String deviceName;
   final int batteryPercent;
+  final int? batteryLeft;
+  final int? batteryRight;
+  final int? batteryCase;
 
   // Settings values
   final String ancMode;
@@ -13,9 +16,12 @@ class HeadphoneStatus {
   final bool? multipoint;
   final bool? ldac;
   final bool? wearDetection;
+  final bool? antiLeak;
   final int? autoShutdownIndex; // 0=30m, 1=1h, 2=3h, 3=5h, 4=Never
   final String spatialAudioMode; // Off, Static, Dynamic
   final String spatialScene; // Music, Sport, Movie
+  final Map<String, dynamic>? modelInfo;
+  final Map<String, dynamic>? gestures;
   final String? error;
 
   HeadphoneStatus({
@@ -23,6 +29,9 @@ class HeadphoneStatus {
     required this.isConnecting,
     required this.deviceName,
     required this.batteryPercent,
+    this.batteryLeft,
+    this.batteryRight,
+    this.batteryCase,
     required this.ancMode,
     required this.ancIntensity,
     required this.eqPreset,
@@ -31,11 +40,26 @@ class HeadphoneStatus {
     this.multipoint,
     this.ldac,
     this.wearDetection,
+    this.antiLeak,
     this.autoShutdownIndex,
     required this.spatialAudioMode,
     required this.spatialScene,
+    this.modelInfo,
+    this.gestures,
     this.error,
   });
+
+  bool get isTws => batteryLeft != null && batteryRight != null;
+  Map<String, dynamic> get modelCapabilities => (modelInfo?['capabilities'] as Map<String, dynamic>?) ?? const {};
+  bool get hasAnc => modelCapabilities['has_anc'] as bool? ?? true;
+  bool get hasAncLevels => modelCapabilities['has_anc_levels'] as bool? ?? true;
+  bool get hasSpatialAudio => modelCapabilities['has_spatial_audio'] as bool? ?? false;
+  bool get hasLdac => modelCapabilities['has_ldac'] as bool? ?? false;
+  bool get hasGestures => modelCapabilities['has_gestures'] as bool? ?? false;
+  bool get hasWearDetection => modelCapabilities['has_wear_detection'] as bool? ?? false;
+  bool get hasAutoShutdown => modelCapabilities['has_auto_shutdown'] as bool? ?? true;
+  bool get hasAntiLeak => modelCapabilities['has_anti_leak'] as bool? ?? false;
+  String get eqType => modelCapabilities['eq_type'] as String? ?? 'standard';
 
   factory HeadphoneStatus.disconnected() {
     return HeadphoneStatus(
@@ -43,6 +67,9 @@ class HeadphoneStatus {
       isConnecting: false,
       deviceName: 'Disconnected',
       batteryPercent: 0,
+      batteryLeft: null,
+      batteryRight: null,
+      batteryCase: null,
       ancMode: 'Normal (Off)',
       ancIntensity: 0,
       eqPreset: 'Default',
@@ -51,9 +78,12 @@ class HeadphoneStatus {
       multipoint: false,
       ldac: false,
       wearDetection: false,
+      antiLeak: false,
       autoShutdownIndex: 4,
       spatialAudioMode: 'Off',
       spatialScene: 'Music',
+      modelInfo: null,
+      gestures: null,
     );
   }
 
@@ -62,6 +92,9 @@ class HeadphoneStatus {
     bool? isConnecting,
     String? deviceName,
     int? batteryPercent,
+    int? batteryLeft,
+    int? batteryRight,
+    int? batteryCase,
     String? ancMode,
     int? ancIntensity,
     String? eqPreset,
@@ -70,9 +103,12 @@ class HeadphoneStatus {
     bool? multipoint,
     bool? ldac,
     bool? wearDetection,
+    bool? antiLeak,
     int? autoShutdownIndex,
     String? spatialAudioMode,
     String? spatialScene,
+    Map<String, dynamic>? modelInfo,
+    Map<String, dynamic>? gestures,
     String? error,
   }) {
     return HeadphoneStatus(
@@ -80,6 +116,9 @@ class HeadphoneStatus {
       isConnecting: isConnecting ?? this.isConnecting,
       deviceName: deviceName ?? this.deviceName,
       batteryPercent: batteryPercent ?? this.batteryPercent,
+      batteryLeft: batteryLeft ?? this.batteryLeft,
+      batteryRight: batteryRight ?? this.batteryRight,
+      batteryCase: batteryCase ?? this.batteryCase,
       ancMode: ancMode ?? this.ancMode,
       ancIntensity: ancIntensity ?? this.ancIntensity,
       eqPreset: eqPreset ?? this.eqPreset,
@@ -88,9 +127,12 @@ class HeadphoneStatus {
       multipoint: multipoint ?? this.multipoint,
       ldac: ldac ?? this.ldac,
       wearDetection: wearDetection ?? this.wearDetection,
+      antiLeak: antiLeak ?? this.antiLeak,
       autoShutdownIndex: autoShutdownIndex ?? this.autoShutdownIndex,
       spatialAudioMode: spatialAudioMode ?? this.spatialAudioMode,
       spatialScene: spatialScene ?? this.spatialScene,
+      modelInfo: modelInfo ?? this.modelInfo,
+      gestures: gestures ?? this.gestures,
       error: error ?? this.error,
     );
   }

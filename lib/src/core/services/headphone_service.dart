@@ -17,11 +17,13 @@ abstract class HeadphoneService {
   Future<void> setMultipoint(bool enabled);
   Future<void> setLdac(bool enabled);
   Future<void> setWearDetection(bool enabled);
+  Future<void> setAntiLeak(bool enabled);
   Future<void> setAutoShutdown(int timerVal); // Liesheng protocol timer byte (1, 2, 6, 10, 255)
   Future<void> setSpatialAudio(String mode);
   Future<void> setSpatialScene(int sceneIdx); // 0=Music, 1=Sport, 2=Movie
-  Future<void> setEqPreset(int presetIdx); // 0-4
+  Future<void> setEqPreset(int presetIdx); // 0-8 (Standard) or 0-4 (S40)
   Future<void> setCustomEq(List<double> gains); // 10 frequency band gains in dB
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc); // Config ID 2
   Future<void> renameDevice(String newName);
   Future<void> findDevice(bool play);
   Future<void> refreshStatus();

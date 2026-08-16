@@ -595,6 +595,18 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setAntiLeak(bool enabled) async {
+    _updateStatus(_status.copyWith(antiLeak: enabled));
+    await _writeSetting(7, enabled ? 1 : 0);
+  }
+
+  @override
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {
+    await _writePacket(opRead, 242, Uint8List.fromList([5, 0, 2, gestureType, leftFunc, rightFunc]));
+    await _queryStatus();
+  }
+
+  @override
   Future<void> refreshStatus() async {
     await _queryStatus();
   }
