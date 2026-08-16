@@ -210,6 +210,8 @@ def reset_bluetooth_connection(mac_address):
     """
     Attempts to disconnect and reconnect the Bluetooth device to release stuck RFCOMM channels.
     """
+    if sys.platform == 'win32':
+        return False
     print("\nAttempting to reset Bluetooth link to free the resource...")
     try:
         print("Disconnecting device...")
@@ -678,24 +680,45 @@ class HaylouHeadphoneController:
 
 def scan_paired_devices():
     """
-    Scans Linux bluez devices list to find any compatible Haylou audio device.
+    Scans paired Bluetooth devices list to find compatible Haylou audio devices on Linux and Windows.
     """
     print("Scanning paired Bluetooth devices...")
-    try:
-        out = subprocess.check_output(["bluetoothctl", "devices"], text=True)
-        devices = []
-        for line in out.splitlines():
-            m = re.match(r"Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)", line)
-            if m:
-                mac, name = m.groups()
-                if any(x in name.lower() for x in ["haylou", "s40", "s35", "s30"]):
-                    devices.append((mac, name))
+    devices = []
+    if sys.platform == 'win32':
+        try:
+            ps_cmd = 'Get-PnpDevice -Class Bluetooth -Status OK | Select-Object -Property FriendlyName, InstanceId | ConvertTo-Json -Compress'
+            out = subprocess.check_output(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd], text=True, stderr=subprocess.DEVNULL)
+            data = json.loads(out) if out.strip() else []
+            if isinstance(data, dict):
+                data = [data]
+            for item in data:
+                name = item.get("FriendlyName", "")
+                inst_id = item.get("InstanceId", "")
+                m = re.search(r"DEV_([0-9A-Fa-f]{12})", inst_id)
+                if m and name:
+                    raw_mac = m.group(1)
+                    mac = ":".join(raw_mac[i:i+2] for i in range(0, 12, 2)).upper()
+                    if any(x in name.lower() for x in ["haylou", "s40", "s35", "s30"]):
+                        if (mac, name) not in devices:
+                            devices.append((mac, name))
+        except Exception as e:
+            print(f"Error scanning Windows Bluetooth devices: {e}")
         return devices
-    except FileNotFoundError:
-        return []
-    except Exception as e:
-        print(f"Error scanning devices: {e}")
-        return []
+    else:
+        try:
+            out = subprocess.check_output(["bluetoothctl", "devices"], text=True)
+            for line in out.splitlines():
+                m = re.match(r"Device\s+((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})\s+(.*)", line)
+                if m:
+                    mac, name = m.groups()
+                    if any(x in name.lower() for x in ["haylou", "s40", "s35", "s30"]):
+                        devices.append((mac, name))
+            return devices
+        except FileNotFoundError:
+            return []
+        except Exception as e:
+            print(f"Error scanning devices: {e}")
+            return []
 
 def find_control_port(mac_address):
     """
@@ -1148,18 +1171,18 @@ def json_mode_loop(controller):
 
             try:
                 cmd = json.loads(line)
-                action = cmd.get("action")
+                action = cmd.get("action") or cmd.get("command")
                 value = cmd.get("value")
 
                 success = False
                 with sock_lock:
-                    if action == "set_anc":
+                    if action in ("set_anc", "set_anc_mode"):
                         success = controller.set_anc_mode(int(value))
                     elif action == "set_anc_level":
                         success = controller.set_anc_level(int(value))
                     elif action == "set_game_mode":
                         success = controller.set_game_mode(bool(value))
-                    elif action == "set_wind_noise":
+                    elif action in ("set_wind_noise", "set_wind_noise_suppression"):
                         success = controller.set_wind_noise(bool(value))
                     elif action == "set_multipoint":
                         success = controller.set_multipoint(bool(value))
@@ -1197,9 +1220,9 @@ def json_mode_loop(controller):
                         play = bool(value) if isinstance(value, bool) else True
                         earbud_id = int(cmd.get("earbud_id", 3)) if isinstance(cmd, dict) else 3
                         success = controller.find_device(is_play=play, earbud_id=earbud_id)
-                    elif action == "rename":
+                    elif action in ("rename", "rename_device"):
                         success = controller.set_device_name(str(value))
-                    elif action == "get_status":
+                    elif action in ("get_status", "refresh_status"):
                         success = True
                     elif action == "disconnect":
                         controller.disconnect()

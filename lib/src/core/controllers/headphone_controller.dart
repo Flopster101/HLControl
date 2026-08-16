@@ -5,7 +5,7 @@ import '../models/bluetooth_device.dart';
 import '../models/headphone_status.dart';
 import '../services/headphone_service.dart';
 import '../services/android_service.dart';
-import '../services/linux_service.dart';
+import '../services/desktop_service.dart';
 import '../services/simulation_service.dart';
 
 class HeadphoneController extends ChangeNotifier {
@@ -34,7 +34,7 @@ class HeadphoneController extends ChangeNotifier {
       if (defaultTargetPlatform == TargetPlatform.android) {
         _service = AndroidHeadphoneService();
       } else {
-        _service = LinuxHeadphoneService();
+        _service = DesktopHeadphoneService();
       }
     }
 
