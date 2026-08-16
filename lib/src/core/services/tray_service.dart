@@ -52,24 +52,27 @@ class TrayService with TrayListener {
 
     final status = headphoneController.status;
     final isConnected = status.isConnected;
-
-    final anc = status.ancMode.toLowerCase();
-    final isOff = anc.contains('normal') || anc.contains('off') || anc == '0';
-    final isAnc = (anc.contains('anc') && !anc.contains('adaptive')) || anc == '1';
-    final isAware = anc.contains('transparen') || anc.contains('aware') || anc == '2';
-    final isAdaptive = anc.contains('adaptive') || anc == '4';
-
-    final spatial = status.spatialAudioMode.toLowerCase();
-    final isSpatialOff = spatial == 'off';
-    final isSpatialStatic = spatial == 'static';
-    final isSpatialDynamic = spatial == 'dynamic';
+    final isConnecting = status.isConnecting || headphoneController.isConnecting;
 
     final deviceLabel = isConnected
         ? (status.deviceName.isNotEmpty ? status.deviceName : 'Headphones')
         : (themeController.lastConnectedName.isNotEmpty ? themeController.lastConnectedName : 'Headphones');
 
-    final menu = Menu(
-      items: [
+    final List<MenuItem> items = [];
+
+    if (isConnected) {
+      final anc = status.ancMode.toLowerCase();
+      final isOff = anc.contains('normal') || anc.contains('off') || anc == '0';
+      final isAnc = (anc.contains('anc') && !anc.contains('adaptive')) || anc == '1';
+      final isAware = anc.contains('transparen') || anc.contains('aware') || anc == '2';
+      final isAdaptive = anc.contains('adaptive') || anc == '4';
+
+      final spatial = status.spatialAudioMode.toLowerCase();
+      final isSpatialOff = spatial == 'off';
+      final isSpatialStatic = spatial == 'static';
+      final isSpatialDynamic = spatial == 'dynamic';
+
+      items.addAll([
         // 1. ANC Modes
         MenuItem.checkbox(
           key: 'anc_off',
@@ -125,30 +128,55 @@ class TrayService with TrayListener {
         MenuItem.separator(),
 
         // 4. Device Connection Action
-        if (isConnected)
-          MenuItem(
-            key: 'disconnect',
-            label: 'Disconnect ($deviceLabel)',
-          )
-        else
+        MenuItem(
+          key: 'disconnect',
+          label: 'Disconnect ($deviceLabel)',
+        ),
+        MenuItem.separator(),
+      ]);
+    } else if (isConnecting) {
+      items.addAll([
+        MenuItem(
+          key: 'connecting',
+          label: 'Connecting ($deviceLabel)...',
+          disabled: true,
+        ),
+        MenuItem.separator(),
+      ]);
+    } else {
+      if (themeController.lastConnectedMac.isNotEmpty) {
+        items.addAll([
           MenuItem(
             key: 'connect',
             label: 'Connect ($deviceLabel)',
           ),
-        MenuItem.separator(),
+          MenuItem.separator(),
+        ]);
+      } else {
+        items.addAll([
+          MenuItem(
+            key: 'disconnected',
+            label: 'Disconnected',
+            disabled: true,
+          ),
+          MenuItem.separator(),
+        ]);
+      }
+    }
 
-        // 5. App Controls
-        MenuItem(
-          key: 'open_app',
-          label: 'Open HLControl',
-        ),
-        MenuItem(
-          key: 'quit',
-          label: 'Quit',
-        ),
-      ],
-    );
+    // 5. App Controls
+    items.addAll([
+      MenuItem(
+        key: 'open_app',
+        label: 'Open HLControl',
+      ),
+      MenuItem(
+        key: 'quit',
+        label: 'Quit',
+      ),
+    ]);
 
+    final menu = Menu(items: items);
     await trayManager.setContextMenu(menu);
   }
 
