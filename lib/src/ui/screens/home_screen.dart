@@ -676,25 +676,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (!_isConnected || status.ancMode != 'Unknown') ...[
           _buildSectionHeader(theme, 'Noise control'),
           const SizedBox(height: 12),
-          AncSelector(
-            selectedMode: _selectedAncMode,
-            enabled: _isConnected,
-            onChanged: (mode) {
-              int modeVal = 0;
-              if (mode == 'ANC On') {
-                modeVal = 1;
-              } else if (mode == 'Transparency') {
-                modeVal = 2;
-              } else if (mode == 'Adaptive') {
-                modeVal = 4;
-              }
-              widget.headphoneController.setAncMode(modeVal);
-            },
-          ),
-          if (_isConnected && (_selectedAncMode == 'ANC On' || _selectedAncMode == 'Adaptive')) ...[
-            const SizedBox(height: 12),
-            _buildAncIntensityCard(theme),
-          ],
+          _buildNoiseControlCard(theme),
           const SizedBox(height: 28),
         ],
 
@@ -981,57 +963,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAncIntensityCard(ThemeData theme) {
+  Widget _buildNoiseControlCard(ThemeData theme) {
+    final showAncLevel = _isConnected && (_selectedAncMode == 'ANC On' || _selectedAncMode == 'Adaptive');
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'ANC level',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  _selectedAncIntensity == 2 ? 'Low' : (_selectedAncIntensity == 1 ? 'Medium' : 'High'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            AncSelector(
+              selectedMode: _selectedAncMode,
+              enabled: _isConnected,
+              onChanged: (mode) {
+                int modeVal = 0;
+                if (mode == 'ANC On') {
+                  modeVal = 1;
+                } else if (mode == 'Transparency') {
+                  modeVal = 2;
+                } else if (mode == 'Adaptive') {
+                  modeVal = 4;
+                }
+                widget.headphoneController.setAncMode(modeVal);
+              },
             ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<int>(
-                style: const ButtonStyle(
-                  visualDensity: VisualDensity.compact,
-                ),
-                segments: const [
-                  ButtonSegment<int>(
-                    value: 2,
-                    label: Text('Low'),
-                  ),
-                  ButtonSegment<int>(
-                    value: 1,
-                    label: Text('Medium'),
-                  ),
-                  ButtonSegment<int>(
-                    value: 0,
-                    label: Text('High'),
-                  ),
-                ],
-                selected: {_selectedAncIntensity},
-                onSelectionChanged: _isConnected
-                    ? (newSelection) {
-                        widget.headphoneController.setAncLevel(newSelection.first);
-                      }
-                    : null,
-              ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: showAncLevel
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 16),
+                        const Divider(height: 1),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'ANC level',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              _selectedAncIntensity == 2
+                                  ? 'Low'
+                                  : (_selectedAncIntensity == 1 ? 'Medium' : 'High'),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: SegmentedButton<int>(
+                            style: const ButtonStyle(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            segments: const [
+                              ButtonSegment<int>(
+                                value: 2,
+                                label: Text('Low'),
+                              ),
+                              ButtonSegment<int>(
+                                value: 1,
+                                label: Text('Medium'),
+                              ),
+                              ButtonSegment<int>(
+                                value: 0,
+                                label: Text('High'),
+                              ),
+                            ],
+                            selected: {_selectedAncIntensity},
+                            onSelectionChanged: _isConnected
+                                ? (newSelection) {
+                                    widget.headphoneController.setAncLevel(newSelection.first);
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
             ),
           ],
         ),
