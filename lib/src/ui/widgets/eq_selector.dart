@@ -14,7 +14,7 @@ class EqSelector extends StatelessWidget {
 
   static const List<Map<String, String>> _presets = [
     {'id': 'Default', 'label': 'Default'},
-    {'id': 'Subwoofer', 'label': 'Subwoofer'},
+    {'id': 'Subwoofer', 'label': 'Bass'},
     {'id': 'Rock', 'label': 'Rock'},
     {'id': 'Soft', 'label': 'Soft'},
     {'id': 'Classical', 'label': 'Classical'},
