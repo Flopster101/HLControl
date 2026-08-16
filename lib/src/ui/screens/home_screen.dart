@@ -755,70 +755,70 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeadphonesImage(ThemeData theme) {
-    if (!_isConnected) {
-      return Container(
-        width: 180,
-        height: 180,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: theme.colorScheme.surfaceContainerLow,
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.05),
-              blurRadius: 32,
-              spreadRadius: 6,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.94, end: 1.0).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: !_isConnected
+          ? Container(
+              key: const ValueKey('disconnected_hero_avatar'),
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.headphones_rounded,
+                  size: 68,
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+                ),
+              ),
+            )
+          : Container(
+              key: ValueKey('connected_hero_$_deviceName'),
+              width: 190,
+              height: 190,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.08),
+                    blurRadius: 40,
+                    spreadRadius: 8,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Image.asset(
+                  _getDeviceImageAsset(_deviceName),
+                  width: 180,
+                  height: 180,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.headphones_rounded,
+                      size: 76,
+                      color: theme.colorScheme.primary,
+                    );
+                  },
+                ),
+              ),
             ),
-          ],
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.25),
-            width: 1.5,
-          ),
-        ),
-        child: Center(
-          child: Icon(
-            Icons.headphones_rounded,
-            size: 76,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.45),
-          ),
-        ),
-      );
-    }
-
-    final imageAsset = _getDeviceImageAsset(_deviceName);
-
-    return Container(
-      width: 180,
-      height: 180,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: theme.colorScheme.surfaceContainerLow,
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.12),
-            blurRadius: 36,
-            spreadRadius: 6,
-          ),
-        ],
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
-          width: 1.5,
-        ),
-      ),
-      child: Center(
-        child: Image.asset(
-          imageAsset,
-          width: 155,
-          height: 155,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              Icons.headphones_rounded,
-              size: 76,
-              color: theme.colorScheme.primary,
-            );
-          },
-        ),
-      ),
     );
   }
 
