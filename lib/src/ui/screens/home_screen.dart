@@ -36,7 +36,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   int get _batteryPercent => widget.headphoneController.batteryPercent;
 
+  // Optimistic UI state overrides and in-flight lock tracking
+  final Map<String, dynamic> _optimisticOverrides = {};
+  final Set<String> _inFlightControls = {};
+
+  Future<void> _executeOptimisticAction<T>({
+    required String controlKey,
+    required String controlName,
+    required T newValue,
+    required T currentValue,
+    required Future<void> Function() action,
+    Duration timeout = const Duration(seconds: 4),
+  }) async {
+    if (_inFlightControls.contains(controlKey)) return;
+
+    setState(() {
+      _inFlightControls.add(controlKey);
+      _optimisticOverrides[controlKey] = newValue;
+    });
+
+    try {
+      await action().timeout(timeout);
+      // Brief debounce window to prevent rapid serial command flooding
+      await Future.delayed(const Duration(milliseconds: 250));
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _optimisticOverrides.remove(controlKey);
+        });
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update $controlName'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _inFlightControls.remove(controlKey);
+          _optimisticOverrides.remove(controlKey);
+        });
+      }
+    }
+  }
+
   String get _selectedAncMode {
+    if (_optimisticOverrides.containsKey('anc_mode')) {
+      return _optimisticOverrides['anc_mode'] as String;
+    }
     final mode = widget.headphoneController.status.ancMode;
     if (mode.contains('Normal') || mode.contains('Off')) return 'Normal';
     if (mode.contains('Adaptive')) return 'Adaptive';
@@ -45,21 +95,75 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Normal';
   }
 
-  int get _selectedAncIntensity => widget.headphoneController.status.ancIntensity;
+  int get _selectedAncIntensity {
+    if (_optimisticOverrides.containsKey('anc_intensity')) {
+      return _optimisticOverrides['anc_intensity'] as int;
+    }
+    return widget.headphoneController.status.ancIntensity;
+  }
 
-  String get _selectedEqPreset => widget.headphoneController.status.eqPreset;
+  String get _selectedEqPreset {
+    if (_optimisticOverrides.containsKey('eq_preset')) {
+      return _optimisticOverrides['eq_preset'] as String;
+    }
+    return widget.headphoneController.status.eqPreset;
+  }
 
-  bool get _gameMode => widget.headphoneController.status.gameMode ?? false;
-  bool get _windNoiseReduction => widget.headphoneController.status.windNoise ?? false;
-  bool get _multipoint => widget.headphoneController.status.multipoint ?? false;
-  bool get _ldac => widget.headphoneController.status.ldac ?? false;
+  bool get _gameMode {
+    if (_optimisticOverrides.containsKey('game_mode')) {
+      return _optimisticOverrides['game_mode'] as bool;
+    }
+    return widget.headphoneController.status.gameMode ?? false;
+  }
 
-  String get _spatialAudioMode => widget.headphoneController.status.spatialAudioMode;
-  String get _spatialScene => widget.headphoneController.status.spatialScene;
+  bool get _windNoiseReduction {
+    if (_optimisticOverrides.containsKey('wind_noise')) {
+      return _optimisticOverrides['wind_noise'] as bool;
+    }
+    return widget.headphoneController.status.windNoise ?? false;
+  }
 
-  bool get _wearDetection => widget.headphoneController.status.wearDetection ?? false;
+  bool get _multipoint {
+    if (_optimisticOverrides.containsKey('multipoint')) {
+      return _optimisticOverrides['multipoint'] as bool;
+    }
+    return widget.headphoneController.status.multipoint ?? false;
+  }
 
-  int get _autoShutdownIndex => widget.headphoneController.status.autoShutdownIndex ?? 4;
+  bool get _ldac {
+    if (_optimisticOverrides.containsKey('ldac')) {
+      return _optimisticOverrides['ldac'] as bool;
+    }
+    return widget.headphoneController.status.ldac ?? false;
+  }
+
+  String get _spatialAudioMode {
+    if (_optimisticOverrides.containsKey('spatial_audio')) {
+      return _optimisticOverrides['spatial_audio'] as String;
+    }
+    return widget.headphoneController.status.spatialAudioMode;
+  }
+
+  String get _spatialScene {
+    if (_optimisticOverrides.containsKey('spatial_scene')) {
+      return _optimisticOverrides['spatial_scene'] as String;
+    }
+    return widget.headphoneController.status.spatialScene;
+  }
+
+  bool get _wearDetection {
+    if (_optimisticOverrides.containsKey('wear_detection')) {
+      return _optimisticOverrides['wear_detection'] as bool;
+    }
+    return widget.headphoneController.status.wearDetection ?? false;
+  }
+
+  int get _autoShutdownIndex {
+    if (_optimisticOverrides.containsKey('auto_shutdown')) {
+      return _optimisticOverrides['auto_shutdown'] as int;
+    }
+    return widget.headphoneController.status.autoShutdownIndex ?? 4;
+  }
   final List<String> _shutdownOptions = ['30 min', '1 hour', '3 hours', '5 hours', 'Never'];
 
   // Custom EQ states (10-band slider values from -12 to +12 dB)
@@ -350,8 +454,108 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _handleAncModeChanged(String mode) {
+    if (!_isConnected || _inFlightControls.contains('anc_mode')) return;
+    int modeVal = 0;
+    if (mode == 'ANC On') {
+      modeVal = 1;
+    } else if (mode == 'Transparency') {
+      modeVal = 2;
+    } else if (mode == 'Adaptive') {
+      modeVal = 4;
+    }
+    _executeOptimisticAction<String>(
+      controlKey: 'anc_mode',
+      controlName: 'ANC mode',
+      newValue: mode,
+      currentValue: _selectedAncMode,
+      action: () => widget.headphoneController.setAncMode(modeVal),
+    );
+  }
+
+  void _handleAncIntensityChanged(int level) {
+    if (!_isConnected || _inFlightControls.contains('anc_intensity')) return;
+    _executeOptimisticAction<int>(
+      controlKey: 'anc_intensity',
+      controlName: 'ANC level',
+      newValue: level,
+      currentValue: _selectedAncIntensity,
+      action: () => widget.headphoneController.setAncLevel(level),
+    );
+  }
+
+  void _handleEqPresetChanged(String preset) {
+    if (!_isConnected || _inFlightControls.contains('eq_preset')) return;
+    final presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
+    final idx = presets.indexOf(preset);
+    if (idx != -1) {
+      final vals = _presetValues[preset];
+      if (vals != null) {
+        setState(() {
+          for (int i = 0; i < 10; i++) {
+            _eqValues[i] = vals[i];
+          }
+        });
+      }
+      _executeOptimisticAction<String>(
+        controlKey: 'eq_preset',
+        controlName: 'EQ preset',
+        newValue: preset,
+        currentValue: _selectedEqPreset,
+        action: () => widget.headphoneController.setEqPreset(idx),
+      );
+    }
+  }
+
+  void _handleAutoShutdownChanged(int choiceIdx) {
+    if (!_isConnected || _inFlightControls.contains('auto_shutdown')) return;
+    _executeOptimisticAction<int>(
+      controlKey: 'auto_shutdown',
+      controlName: 'auto shutdown timer',
+      newValue: choiceIdx,
+      currentValue: _autoShutdownIndex,
+      action: () => widget.headphoneController.setAutoShutdown(choiceIdx),
+    );
+  }
+
+  void _handleWindNoiseChanged(bool val) {
+    if (!_isConnected || _inFlightControls.contains('wind_noise')) return;
+    _executeOptimisticAction<bool>(
+      controlKey: 'wind_noise',
+      controlName: 'wind noise reduction',
+      newValue: val,
+      currentValue: _windNoiseReduction,
+      action: () => widget.headphoneController.setWindNoise(val),
+    );
+  }
+
+  void _handleWearDetectionChanged(bool val) {
+    if (!_isConnected || _inFlightControls.contains('wear_detection')) return;
+    _executeOptimisticAction<bool>(
+      controlKey: 'wear_detection',
+      controlName: 'smart wear detection',
+      newValue: val,
+      currentValue: _wearDetection,
+      action: () => widget.headphoneController.setWearDetection(val),
+    );
+  }
+
+  void _handleSpatialSceneChanged(String scene) {
+    if (!_isConnected || _inFlightControls.contains('spatial_scene')) return;
+    final idx = ['Music', 'Sport', 'Movie'].indexOf(scene);
+    if (idx != -1) {
+      _executeOptimisticAction<String>(
+        controlKey: 'spatial_scene',
+        controlName: 'spatial scene',
+        newValue: scene,
+        currentValue: _spatialScene,
+        action: () => widget.headphoneController.setSpatialScene(idx),
+      );
+    }
+  }
+
   void _handleLdacChanged(bool val) {
-    if (!_isConnected) return;
+    if (!_isConnected || _inFlightControls.contains('ldac')) return;
     if (val) {
       final List<String> conflicts = [];
       if (_multipoint) conflicts.add('multipoint connection');
@@ -369,7 +573,13 @@ class _HomeScreenState extends State<HomeScreen> {
         confirmLabel: 'Enable & restart',
         icon: Icons.high_quality,
         onConfirm: () {
-          widget.headphoneController.setLdac(true);
+          _executeOptimisticAction<bool>(
+            controlKey: 'ldac',
+            controlName: 'LDAC audio codec',
+            newValue: true,
+            currentValue: _ldac,
+            action: () => widget.headphoneController.setLdac(true),
+          );
         },
       );
     } else {
@@ -379,14 +589,20 @@ class _HomeScreenState extends State<HomeScreen> {
         confirmLabel: 'Disable & restart',
         icon: Icons.high_quality,
         onConfirm: () {
-          widget.headphoneController.setLdac(false);
+          _executeOptimisticAction<bool>(
+            controlKey: 'ldac',
+            controlName: 'LDAC audio codec',
+            newValue: false,
+            currentValue: _ldac,
+            action: () => widget.headphoneController.setLdac(false),
+          );
         },
       );
     }
   }
 
   void _handleMultipointChanged(bool val) {
-    if (!_isConnected) return;
+    if (!_isConnected || _inFlightControls.contains('multipoint')) return;
     if (val && _ldac) {
       _showRebootWarningDialog(
         title: 'Enable multipoint connection?',
@@ -394,16 +610,28 @@ class _HomeScreenState extends State<HomeScreen> {
         confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.link,
         onConfirm: () {
-          widget.headphoneController.setMultipoint(true);
+          _executeOptimisticAction<bool>(
+            controlKey: 'multipoint',
+            controlName: 'multipoint connection',
+            newValue: true,
+            currentValue: _multipoint,
+            action: () => widget.headphoneController.setMultipoint(true),
+          );
         },
       );
     } else {
-      widget.headphoneController.setMultipoint(val);
+      _executeOptimisticAction<bool>(
+        controlKey: 'multipoint',
+        controlName: 'multipoint connection',
+        newValue: val,
+        currentValue: _multipoint,
+        action: () => widget.headphoneController.setMultipoint(val),
+      );
     }
   }
 
   void _handleGameModeChanged(bool val) {
-    if (!_isConnected) return;
+    if (!_isConnected || _inFlightControls.contains('game_mode')) return;
     if (val && _ldac) {
       _showRebootWarningDialog(
         title: 'Enable game mode?',
@@ -411,16 +639,28 @@ class _HomeScreenState extends State<HomeScreen> {
         confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.sports_esports,
         onConfirm: () {
-          widget.headphoneController.setGameMode(true);
+          _executeOptimisticAction<bool>(
+            controlKey: 'game_mode',
+            controlName: 'game mode',
+            newValue: true,
+            currentValue: _gameMode,
+            action: () => widget.headphoneController.setGameMode(true),
+          );
         },
       );
     } else {
-      widget.headphoneController.setGameMode(val);
+      _executeOptimisticAction<bool>(
+        controlKey: 'game_mode',
+        controlName: 'game mode',
+        newValue: val,
+        currentValue: _gameMode,
+        action: () => widget.headphoneController.setGameMode(val),
+      );
     }
   }
 
   void _handleSpatialAudioChanged(String mode) {
-    if (!_isConnected) return;
+    if (!_isConnected || _inFlightControls.contains('spatial_audio')) return;
     if (mode != 'Off' && _ldac) {
       _showRebootWarningDialog(
         title: 'Enable spatial audio ($mode)?',
@@ -428,11 +668,23 @@ class _HomeScreenState extends State<HomeScreen> {
         confirmLabel: 'Turn off LDAC & enable',
         icon: Icons.spatial_audio,
         onConfirm: () {
-          widget.headphoneController.setSpatialAudio(mode);
+          _executeOptimisticAction<String>(
+            controlKey: 'spatial_audio',
+            controlName: 'spatial audio',
+            newValue: mode,
+            currentValue: _spatialAudioMode,
+            action: () => widget.headphoneController.setSpatialAudio(mode),
+          );
         },
       );
     } else {
-      widget.headphoneController.setSpatialAudio(mode);
+      _executeOptimisticAction<String>(
+        controlKey: 'spatial_audio',
+        controlName: 'spatial audio',
+        newValue: mode,
+        currentValue: _spatialAudioMode,
+        action: () => widget.headphoneController.setSpatialAudio(mode),
+      );
     }
   }
 
@@ -975,17 +1227,7 @@ class _HomeScreenState extends State<HomeScreen> {
             AncSelector(
               selectedMode: _selectedAncMode,
               enabled: _isConnected,
-              onChanged: (mode) {
-                int modeVal = 0;
-                if (mode == 'ANC On') {
-                  modeVal = 1;
-                } else if (mode == 'Transparency') {
-                  modeVal = 2;
-                } else if (mode == 'Adaptive') {
-                  modeVal = 4;
-                }
-                widget.headphoneController.setAncMode(modeVal);
-              },
+              onChanged: _handleAncModeChanged,
             ),
             AnimatedSize(
               duration: const Duration(milliseconds: 250),
@@ -1041,7 +1283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             selected: {_selectedAncIntensity},
                             onSelectionChanged: _isConnected
                                 ? (newSelection) {
-                                    widget.headphoneController.setAncLevel(newSelection.first);
+                                    _handleAncIntensityChanged(newSelection.first);
                                   }
                                 : null,
                           ),
@@ -1071,21 +1313,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: EqSelector(
             selectedPreset: _selectedEqPreset,
             enabled: _isConnected,
-            onChanged: (preset) {
-              final presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
-              final idx = presets.indexOf(preset);
-              if (idx != -1) {
-                widget.headphoneController.setEqPreset(idx);
-                final vals = _presetValues[preset];
-                if (vals != null) {
-                  setState(() {
-                    for (int i = 0; i < 10; i++) {
-                      _eqValues[i] = vals[i];
-                    }
-                  });
-                }
-              }
-            },
+            onChanged: _handleEqPresetChanged,
           ),
         ),
         const SizedBox(height: 32),
@@ -1761,9 +1989,7 @@ class _HomeScreenState extends State<HomeScreen> {
               max: 4,
               divisions: 4,
               onChanged: _isConnected
-                  ? (val) {
-                      widget.headphoneController.setAutoShutdown(val.toInt());
-                    }
+                  ? (val) => _handleAutoShutdownChanged(val.toInt())
                   : null,
             ),
             // Mathematically aligned labels using Stack layout
@@ -1832,11 +2058,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Wind noise reduction'),
         subtitle: const Text('Filters out outdoor wind noise'),
         value: _windNoiseReduction,
-        onChanged: _isConnected
-            ? (val) {
-                widget.headphoneController.setWindNoise(val);
-              }
-            : null,
+        onChanged: _isConnected ? _handleWindNoiseChanged : null,
       ));
     }
 
@@ -1872,11 +2094,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Smart wear detection'),
         subtitle: const Text('Auto-pause audio on removal'),
         value: _wearDetection,
-        onChanged: _isConnected
-            ? (val) {
-                widget.headphoneController.setWearDetection(val);
-              }
-            : null,
+        onChanged: _isConnected ? _handleWearDetectionChanged : null,
       ));
     }
 
@@ -1977,13 +2195,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     }).toList(),
                     selected: {_spatialScene},
-                    onSelectionChanged: (newSelection) {
-                      final scene = newSelection.first;
-                      final idx = ['Music', 'Sport', 'Movie'].indexOf(scene);
-                      if (idx != -1) {
-                        widget.headphoneController.setSpatialScene(idx);
-                      }
-                    },
+                    onSelectionChanged: _isConnected
+                        ? (newSelection) {
+                            _handleSpatialSceneChanged(newSelection.first);
+                          }
+                        : null,
                   ),
                 ),
               ],
