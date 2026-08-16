@@ -4,14 +4,20 @@
 #ifndef AppArch
   #define AppArch "x64"
 #endif
+#ifndef ProjectRoot
+  #define ProjectRoot "..\.."
+#endif
 #ifndef BuildDir
-  #define BuildDir "..\..\build\windows\x64\runner\Release"
+  #define BuildDir ProjectRoot + "\build\windows\x64\runner\Release"
 #endif
 #ifndef OutputDir
-  #define OutputDir "..\..\dist"
+  #define OutputDir ProjectRoot + "\dist"
 #endif
 #ifndef OutputBaseFilename
   #define OutputBaseFilename "HLControl-v" + AppVersion + "-windows-" + AppArch + "-setup"
+#endif
+#ifndef SetupIcon
+  #define SetupIcon ProjectRoot + "\windows\runner\resources\app_icon.ico"
 #endif
 
 [Setup]
@@ -27,7 +33,7 @@ DefaultGroupName=HLControl
 AllowNoIcons=yes
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputBaseFilename}
-SetupIconFile=..\..\windows\runner\resources\app_icon.ico
+SetupIconFile={#SetupIcon}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

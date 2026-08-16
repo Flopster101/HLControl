@@ -54,3 +54,5 @@ key.properties
 android/key.properties
 *.keystore
 *.jks
+.kotlin/
+android/.kotlin/

@@ -1,0 +1,217 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux:
+    name: Linux (Generic, AppImage & Arch)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Short SHA
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libayatana-appindicator3-dev
+
+      - name: Build Generic Linux Tarball
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/build_linux.sh --release
+
+      - name: Build AppImage
+        run: |
+          ./scripts/build_appimage.sh --release
+
+      - name: Build Arch Linux Package
+        run: |
+          docker run --rm -v "${{ github.workspace }}":/workspace -w /workspace archlinux:base-devel bash -c "
+            pacman -Syu --noconfirm git sudo zstd &&
+            useradd -m builder &&
+            chown -R builder:builder /workspace &&
+            sudo -u builder bash -c 'git config --global --add safe.directory /workspace && cd /workspace/packaging/linux && makepkg -p PKGBUILD.local -f -d --noconfirm' &&
+            mkdir -p /workspace/dist &&
+            cp /workspace/packaging/linux/*.pkg.tar.zst /workspace/dist/
+          "
+
+      - name: Upload Linux Generic Tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64-tarball-${{ steps.vars.outputs.short_sha }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64-appimage-${{ steps.vars.outputs.short_sha }}
+          path: dist/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload Arch Linux Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-linux-pkg-${{ steps.vars.outputs.short_sha }}
+          path: dist/*.pkg.tar.zst
+          if-no-files-found: error
+
+  build-windows:
+    name: Windows (ZIP & Setup Installer)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Short SHA
+        id: vars
+        shell: pwsh
+        run: |
+          $ShortSha = (git rev-parse --short HEAD).Trim()
+          "short_sha=$ShortSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Build Windows Application & Setup Installer
+        shell: pwsh
+        run: |
+          $RootDir = (Get-Location).Path
+          $Version = (Get-Content pubspec.yaml | Select-String '^version:').Line.Split(' ')[1].Split('+')[0].Trim()
+          if (-not $Version) { $Version = "0.1.0" }
+          $GitHash = (git rev-parse --short HEAD).Trim()
+
+          Write-Host "==> Building Windows Release (v$Version)..."
+          flutter build windows --release --dart-define="APP_VERSION=$Version"
+
+          $BuildDir = "$RootDir\build\windows\x64\runner\Release"
+          $DistDir = "$RootDir\dist"
+          New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
+
+          # 1. Standalone ZIP
+          $ZipName = "HLControl-v$Version-windows-x64.zip"
+          Write-Host "==> Creating ZIP Package: $ZipName"
+          Compress-Archive -Path "$BuildDir\*" -DestinationPath "$DistDir\$ZipName" -Force
+
+          # 2. Inno Setup Installer
+          $SetupBase = "HLControl-v$Version-windows-x64-setup"
+          $Iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $Iscc)) { $Iscc = "ISCC.exe" }
+          Write-Host "==> Compiling Inno Setup installer with $Iscc..."
+          & $Iscc "/DAppVersion=$Version" "/DAppArch=x64" "/DProjectRoot=$RootDir" "/DBuildDir=$BuildDir" "/DOutputDir=$DistDir" "/DOutputBaseFilename=$SetupBase" "$RootDir\packaging\windows\inno_setup.iss"
+
+      - name: Upload Windows Standalone ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-zip-${{ steps.vars.outputs.short_sha }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Upload Windows Setup Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-setup-${{ steps.vars.outputs.short_sha }}
+          path: dist/*.exe
+          if-no-files-found: error
+
+  build-android:
+    name: Android (Debug & Release APKs)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Short SHA
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Configure Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "==> Decoding release keystore..."
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+            cat << EOF > android/key.properties
+          storePassword=${STORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=upload-keystore.jks
+          EOF
+          else
+            echo "==> No release keystore secret found. Falling back to debug signing config."
+          fi
+
+      - name: Build Android Debug APKs
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/build_android.sh
+          mkdir -p dist/debug-apks
+          mv dist/*-debug.apk dist/debug-apks/
+
+      - name: Build Android Release APKs
+        run: |
+          ./scripts/build_android.sh --release
+          mkdir -p dist/release-apks
+          mv dist/HLControl-v*.apk dist/release-apks/
+          if ls dist/HLControl-v*.aab 1>/dev/null 2>&1; then mv dist/HLControl-v*.aab dist/release-apks/; fi
+
+      - name: Upload Android Debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apks-${{ steps.vars.outputs.short_sha }}
+          path: dist/debug-apks/*
+          if-no-files-found: error
+
+      - name: Upload Android Release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apks-${{ steps.vars.outputs.short_sha }}
+          path: dist/release-apks/*
+          if-no-files-found: error
