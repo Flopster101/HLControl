@@ -1,0 +1,9 @@
+# Keystore configuration for signing release APKs / App Bundles
+# Copy this file to android/key.properties and adjust the values:
+#
+# cp android/key.properties.example android/key.properties
+
+storePassword=myStorePassword
+keyPassword=myKeyPassword
+keyAlias=myKeyAlias
+storeFile=/path/to/upload-keystore.jks
