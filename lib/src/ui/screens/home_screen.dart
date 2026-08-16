@@ -643,23 +643,27 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         // Premium Product Image & Status Cluster
         Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              _buildHeadphonesImage(theme),
-              const SizedBox(height: 24),
-              Text(
-                _isConnected ? _deviceName : 'Disconnected',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: theme.colorScheme.onSurface,
-                  letterSpacing: -0.5,
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOutCubic,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                _buildHeadphonesImage(theme),
+                const SizedBox(height: 24),
+                Text(
+                  _isConnected ? _deviceName : 'Disconnected',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              _buildStatusCluster(theme),
-            ],
+                const SizedBox(height: 10),
+                _buildStatusCluster(theme),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 28),
@@ -753,70 +757,74 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeadphonesImage(ThemeData theme) {
-    return AnimatedSwitcher(
+    return AnimatedSize(
       duration: const Duration(milliseconds: 350),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.94, end: 1.0).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: !_isConnected
-          ? Container(
-              key: const ValueKey('disconnected_hero_avatar'),
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withOpacity(0.35),
-                  width: 1.5,
-                ),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.headphones_rounded,
-                  size: 68,
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
-                ),
-              ),
-            )
-          : Container(
-              key: ValueKey('connected_hero_$_deviceName'),
-              width: 190,
-              height: 190,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.08),
-                    blurRadius: 40,
-                    spreadRadius: 8,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Image.asset(
-                  _getDeviceImageAsset(_deviceName),
-                  width: 180,
-                  height: 180,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.headphones_rounded,
-                      size: 76,
-                      color: theme.colorScheme.primary,
-                    );
-                  },
-                ),
-              ),
+      curve: Curves.easeInOutCubic,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.94, end: 1.0).animate(animation),
+              child: child,
             ),
+          );
+        },
+        child: !_isConnected
+            ? Container(
+                key: const ValueKey('disconnected_hero_avatar'),
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.headphones_rounded,
+                    size: 68,
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+                  ),
+                ),
+              )
+            : Container(
+                key: ValueKey('connected_hero_$_deviceName'),
+                width: 190,
+                height: 190,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withOpacity(0.08),
+                      blurRadius: 40,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Image.asset(
+                    _getDeviceImageAsset(_deviceName),
+                    width: 180,
+                    height: 180,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.headphones_rounded,
+                        size: 76,
+                        color: theme.colorScheme.primary,
+                      );
+                    },
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
