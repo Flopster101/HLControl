@@ -1858,55 +1858,138 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- SETTINGS TAB ---
   Widget _buildSettingsTab(ThemeData theme, {required bool isWide}) {
-    return _buildCenteredScrollable(
-      key: const ValueKey(2),
-      title: 'Settings',
-      isWide: isWide,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
-      children: [
-        _buildSectionHeader(theme, 'Device settings'),
-        const SizedBox(height: 12),
-        _buildDeviceSettingsCard(theme),
-        const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'Appearance'),
-        const SizedBox(height: 12),
-        _buildAppearanceCard(theme),
-        if (widget.themeController.isDeveloperMode) ...[
-          const SizedBox(height: 28),
-          _buildSectionHeader(theme, 'Developer settings'),
-          const SizedBox(height: 12),
-          _buildSimulatorCard(theme),
-        ],
-        const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'About'),
-        const SizedBox(height: 12),
-        _buildAboutCard(theme),
-        if (_isConnected) ...[
-          const SizedBox(height: 32),
-          FilledButton.tonalIcon(
-            onPressed: () => _showRebootWarningDialog(
-              title: 'Disconnect headset',
-              message: 'Are you sure you want to disconnect from $_deviceName?',
-              confirmLabel: 'Disconnect',
-              onConfirm: () {
-                widget.headphoneController.disconnect();
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Disconnected from $_deviceName'),
-                    behavior: SnackBarBehavior.floating,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final is2Pane = constraints.maxWidth >= 720;
+
+        if (is2Pane) {
+          return _buildCenteredScrollable(
+            key: const ValueKey(2),
+            title: 'Settings',
+            isWide: isWide,
+            maxWidth: 1040,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 28.0),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left Column: Device settings
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildSectionHeader(theme, 'Device settings'),
+                        const SizedBox(height: 12),
+                        _buildDeviceSettingsCard(theme),
+                        if (_isConnected) ...[
+                          const SizedBox(height: 20),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _showRebootWarningDialog(
+                              title: 'Disconnect headset',
+                              message: 'Are you sure you want to disconnect from $_deviceName?',
+                              confirmLabel: 'Disconnect',
+                              onConfirm: () {
+                                widget.headphoneController.disconnect();
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Disconnected from $_deviceName'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                            ),
+                            icon: const Icon(Icons.bluetooth_disabled),
+                            label: const Text('Disconnect headset'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                );
-              },
-            ),
-            icon: const Icon(Icons.bluetooth_disabled),
-            label: const Text('Disconnect headset'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-        ],
-      ],
+                  const SizedBox(width: 24),
+                  // Right Column: Appearance and About stacked
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildSectionHeader(theme, 'Appearance'),
+                        const SizedBox(height: 12),
+                        _buildAppearanceCard(theme),
+                        if (widget.themeController.isDeveloperMode) ...[
+                          const SizedBox(height: 24),
+                          _buildSectionHeader(theme, 'Developer settings'),
+                          const SizedBox(height: 12),
+                          _buildSimulatorCard(theme),
+                        ],
+                        const SizedBox(height: 24),
+                        _buildSectionHeader(theme, 'About'),
+                        const SizedBox(height: 12),
+                        _buildAboutCard(theme),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        // 1-Column Layout (< 720dp)
+        return _buildCenteredScrollable(
+          key: const ValueKey(2),
+          title: 'Settings',
+          isWide: isWide,
+          maxWidth: 580,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          children: [
+            _buildSectionHeader(theme, 'Device settings'),
+            const SizedBox(height: 12),
+            _buildDeviceSettingsCard(theme),
+            const SizedBox(height: 28),
+            _buildSectionHeader(theme, 'Appearance'),
+            const SizedBox(height: 12),
+            _buildAppearanceCard(theme),
+            if (widget.themeController.isDeveloperMode) ...[
+              const SizedBox(height: 28),
+              _buildSectionHeader(theme, 'Developer settings'),
+              const SizedBox(height: 12),
+              _buildSimulatorCard(theme),
+            ],
+            const SizedBox(height: 28),
+            _buildSectionHeader(theme, 'About'),
+            const SizedBox(height: 12),
+            _buildAboutCard(theme),
+            if (_isConnected) ...[
+              const SizedBox(height: 32),
+              FilledButton.tonalIcon(
+                onPressed: () => _showRebootWarningDialog(
+                  title: 'Disconnect headset',
+                  message: 'Are you sure you want to disconnect from $_deviceName?',
+                  confirmLabel: 'Disconnect',
+                  onConfirm: () {
+                    widget.headphoneController.disconnect();
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Disconnected from $_deviceName'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                icon: const Icon(Icons.bluetooth_disabled),
+                label: const Text('Disconnect headset'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 
