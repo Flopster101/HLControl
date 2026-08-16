@@ -6,6 +6,7 @@ import '../../core/constants/app_version.dart';
 import '../../core/controllers/headphone_controller.dart';
 import '../../core/models/bluetooth_device.dart';
 import '../../core/models/headphone_status.dart';
+import '../../core/services/simulation_service.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/anc_selector.dart';
 import '../widgets/eq_selector.dart';
@@ -2651,6 +2652,28 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            const Text('Simulate headset model'),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              value: widget.themeController.mockDeviceKey,
+              decoration: const InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                border: OutlineInputBorder(),
+              ),
+              items: mockModelProfiles.map((p) {
+                return DropdownMenuItem(
+                  value: p.key,
+                  child: Text(p.displayName),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  widget.themeController.setMockDeviceKey(val);
+                }
+              },
+            ),
+            const SizedBox(height: 14),
             const Text('Simulate battery percentage'),
             Slider(
               value: _batteryPercent.toDouble(),

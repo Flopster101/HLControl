@@ -13,6 +13,7 @@ class ThemeController extends ChangeNotifier {
   static const _isDeveloperModeKey = 'is_developer_mode';
   static const _isMockConnectedKey = 'is_mock_connected';
   static const _mockBatteryPercentKey = 'mock_battery_percent';
+  static const _mockDeviceKeyKey = 'mock_device_key';
   static const _autoConnectLastHeadphonesKey = 'auto_connect_last_headphones';
   static const _minimizeToTrayKey = 'minimize_to_tray';
   static const _lastConnectedMacKey = 'last_connected_mac';
@@ -23,6 +24,7 @@ class ThemeController extends ChangeNotifier {
   bool _isDeveloperMode = false; // Hidden developer mode
   bool _isMockConnected = false; // Default to false (simulation mode disabled by default)
   int _mockBatteryPercent = 85;
+  String _mockDeviceKey = 'S40'; // Default mock model (Haylou S40)
   bool _autoConnectLastHeadphones = true; // Auto connect to last headphones (enabled by default)
   bool _minimizeToTray = true; // Minimize to tray on close/minimize (enabled by default)
   String _lastConnectedMac = '';
@@ -34,6 +36,7 @@ class ThemeController extends ChangeNotifier {
   bool get isDeveloperMode => _isDeveloperMode;
   bool get isMockConnected => _isMockConnected;
   int get mockBatteryPercent => _mockBatteryPercent;
+  String get mockDeviceKey => _mockDeviceKey;
   bool get autoConnectLastHeadphones => _autoConnectLastHeadphones;
   bool get minimizeToTray => _minimizeToTray;
   String get lastConnectedMac => _lastConnectedMac;
@@ -88,6 +91,7 @@ class ThemeController extends ChangeNotifier {
       _isDeveloperMode = prefs.getBool(_isDeveloperModeKey) ?? false;
       _isMockConnected = prefs.getBool(_isMockConnectedKey) ?? false;
       _mockBatteryPercent = prefs.getInt(_mockBatteryPercentKey) ?? 85;
+      _mockDeviceKey = prefs.getString(_mockDeviceKeyKey) ?? 'S40';
       _autoConnectLastHeadphones = prefs.getBool(_autoConnectLastHeadphonesKey) ?? true;
       _minimizeToTray = prefs.getBool(_minimizeToTrayKey) ?? true;
       _lastConnectedMac = prefs.getString(_lastConnectedMacKey) ?? '';
@@ -159,6 +163,17 @@ class ThemeController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isMockConnectedKey, value);
+    } catch (_) {}
+  }
+
+  /// Updates the mock device model key and saves it to local storage.
+  Future<void> setMockDeviceKey(String key) async {
+    if (_mockDeviceKey == key) return;
+    _mockDeviceKey = key;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_mockDeviceKeyKey, key);
     } catch (_) {}
   }
 
