@@ -1319,6 +1319,48 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showRepoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        title: const Text('Repository'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('HL Control is an open-source companion app for Haylou headsets created by Flopster101.'),
+              const SizedBox(height: 14),
+              Text(
+                'Source code:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SelectableText(
+                'https://github.com/Flopster101/HLControl',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- SETTINGS TAB ---
   Widget _buildSettingsTab(ThemeData theme, {required bool isWide}) {
     return _buildCenteredScrollable(
@@ -1329,104 +1371,11 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _buildSectionHeader(theme, 'Device settings'),
         const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.edit),
-                title: const Text('Rename headset'),
-                subtitle: Text(_isConnected ? _deviceName : 'Disconnected'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _isConnected ? _showRenameDialog : null,
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: Icon(_isFindingDevice ? Icons.volume_up : Icons.search),
-                title: const Text('Find my headset'),
-                subtitle: Text(_isFindingDevice ? 'Ringing active — tap to stop' : 'Play sound tone to locate headphones'),
-                trailing: _isFindingDevice
-                    ? FilledButton.tonal(
-                        onPressed: _isConnected ? _toggleFindDevice : null,
-                        child: const Text('Stop'),
-                      )
-                    : OutlinedButton(
-                        onPressed: _isConnected ? _toggleFindDevice : null,
-                        child: const Text('Ring'),
-                      ),
-                onTap: _isConnected ? _toggleFindDevice : null,
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('Connection mode'),
-                subtitle: Text(_isConnected ? 'Bluetooth Classic RFCOMM (Port 10)' : 'Not connected'),
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              SwitchListTile(
-                secondary: const Icon(Icons.autorenew),
-                title: const Text('Auto-connect to last headphones'),
-                subtitle: Text(
-                  widget.themeController.lastConnectedName.isNotEmpty
-                      ? 'Automatically link to: ${widget.themeController.lastConnectedName}'
-                      : 'Automatically connect on startup',
-                ),
-                value: widget.themeController.autoConnectLastHeadphones,
-                onChanged: (val) {
-                  widget.themeController.setAutoConnectLastHeadphones(val);
-                },
-              ),
-            ],
-          ),
-        ),
+        _buildDeviceSettingsCard(theme),
         const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'Theme settings'),
+        _buildSectionHeader(theme, 'Appearance'),
         const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.palette_outlined),
-                title: const Text('Theme mode'),
-                subtitle: Text(_getThemeModeName(widget.themeController.themeMode)),
-                trailing: DropdownButton<ThemeMode>(
-                  value: widget.themeController.themeMode,
-                  underline: const SizedBox.shrink(),
-                  onChanged: (mode) {
-                    if (mode != null) {
-                      widget.themeController.setThemeMode(mode);
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(
-                      value: ThemeMode.system,
-                      child: Text('System default'),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.light,
-                      child: Text('Light mode'),
-                    ),
-                    DropdownMenuItem(
-                      value: ThemeMode.dark,
-                      child: Text('Dark mode'),
-                    ),
-                  ],
-                ),
-              ),
-              if (defaultTargetPlatform == TargetPlatform.android) ...[
-                const Divider(height: 1, indent: 16, endIndent: 16),
-                SwitchListTile(
-                  secondary: const Icon(Icons.color_lens_outlined),
-                  title: const Text('Dynamic colors'),
-                  subtitle: const Text('Use wallpaper-based Material You colors (Android 12+)'),
-                  value: widget.themeController.useDynamicColor,
-                  onChanged: (val) {
-                    widget.themeController.setUseDynamicColor(val);
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
+        _buildAppearanceCard(theme),
         if (widget.themeController.isDeveloperMode) ...[
           const SizedBox(height: 28),
           _buildSectionHeader(theme, 'Developer settings'),
@@ -1434,78 +1383,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildSimulatorCard(theme),
         ],
         const SizedBox(height: 28),
-        _buildSectionHeader(theme, 'About app'),
+        _buildSectionHeader(theme, 'About'),
         const SizedBox(height: 12),
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () {
-              if (!widget.themeController.isDeveloperMode) {
-                setState(() {
-                  _versionTapCount++;
-                  if (_versionTapCount >= 5) {
-                    widget.themeController.setDeveloperMode(true);
-                    _versionTapCount = 0;
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Developer settings unlocked! 🎉'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                });
-              }
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.headphones,
-                          color: theme.colorScheme.onPrimaryContainer,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'HL Control',
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              'Version 1.0.0 (reverse engineered)',
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Open source companion app for Haylou Bluetooth headsets (S40, S35, S30). Supports active noise cancellation, sound effects & equalizer, LDAC codec control, and multi-device connection.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        _buildAboutCard(theme),
         if (_isConnected) ...[
           const SizedBox(height: 32),
           FilledButton.tonalIcon(
@@ -1532,6 +1412,249 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildDeviceSettingsCard(ThemeData theme) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Rename headset'),
+            subtitle: Text(_isConnected ? _deviceName : 'Disconnected'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _isConnected ? _showRenameDialog : null,
+          ),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+            indent: 16,
+            endIndent: 16,
+          ),
+          ListTile(
+            leading: Icon(_isFindingDevice ? Icons.volume_up : Icons.search),
+            title: const Text('Find my headset'),
+            subtitle: Text(
+              _isFindingDevice
+                  ? 'Ringing active — tap to stop'
+                  : 'Play sound tone to locate headphones',
+            ),
+            trailing: _isFindingDevice
+                ? FilledButton.tonal(
+                    onPressed: _isConnected ? _toggleFindDevice : null,
+                    child: const Text('Stop'),
+                  )
+                : OutlinedButton(
+                    onPressed: _isConnected ? _toggleFindDevice : null,
+                    child: const Text('Ring'),
+                  ),
+            onTap: _isConnected ? _toggleFindDevice : null,
+          ),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+            indent: 16,
+            endIndent: 16,
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Connection mode'),
+            subtitle: Text(_isConnected ? 'Bluetooth Classic RFCOMM (Port 10)' : 'Not connected'),
+          ),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+            indent: 16,
+            endIndent: 16,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.autorenew),
+            title: const Text('Auto-connect to last headphones'),
+            subtitle: Text(
+              widget.themeController.lastConnectedName.isNotEmpty
+                  ? 'Automatically link to: ${widget.themeController.lastConnectedName}'
+                  : 'Automatically connect on startup',
+            ),
+            value: widget.themeController.autoConnectLastHeadphones,
+            onChanged: (val) {
+              widget.themeController.setAutoConnectLastHeadphones(val);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppearanceCard(ThemeData theme) {
+    return Card(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.palette_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Theme mode',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<ThemeMode>(
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    segments: const [
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.system,
+                        icon: Icon(Icons.brightness_auto_outlined, size: 18),
+                        label: Text('System'),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.light,
+                        icon: Icon(Icons.light_mode_outlined, size: 18),
+                        label: Text('Light'),
+                      ),
+                      ButtonSegment<ThemeMode>(
+                        value: ThemeMode.dark,
+                        icon: Icon(Icons.dark_mode_outlined, size: 18),
+                        label: Text('Dark'),
+                      ),
+                    ],
+                    selected: {widget.themeController.themeMode},
+                    onSelectionChanged: (modes) {
+                      widget.themeController.setThemeMode(modes.first);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (defaultTargetPlatform == TargetPlatform.android) ...[
+            Divider(
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+              indent: 16,
+              endIndent: 16,
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.color_lens_outlined),
+              title: const Text('Dynamic colors'),
+              subtitle: const Text('Use wallpaper-based Material You colors (Android 12+)'),
+              value: widget.themeController.useDynamicColor,
+              onChanged: (val) {
+                widget.themeController.setUseDynamicColor(val);
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutCard(ThemeData theme) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              if (!widget.themeController.isDeveloperMode) {
+                setState(() {
+                  _versionTapCount++;
+                  if (_versionTapCount >= 5) {
+                    widget.themeController.setDeveloperMode(true);
+                    _versionTapCount = 0;
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Developer settings unlocked! 🎉'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                });
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.headphones,
+                      color: theme.colorScheme.onPrimaryContainer,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'HL Control',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Version 1.0.0',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Text(
+              'An open-source alternative to the official Haylou app for Bluetooth headsets.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+            indent: 16,
+            endIndent: 16,
+          ),
+          ListTile(
+            leading: const Icon(Icons.code_rounded),
+            title: const Text('Repository'),
+            subtitle: const Text('GitHub source code and issue tracker'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: _showRepoDialog,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1597,17 +1720,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  String _getThemeModeName(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.system:
-        return 'System default';
-      case ThemeMode.light:
-        return 'Light mode';
-      case ThemeMode.dark:
-        return 'Dark mode';
-    }
   }
 
   // --- GENERAL WIDGETS ---
