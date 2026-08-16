@@ -100,10 +100,10 @@ ANC_MODES = {
 # EQ Presets Mapping for S40 (Read value mapping)
 EQ_PRESETS = {
     0: "Default",
-    1: "Vocal",
+    1: "Subwoofer",
     2: "Rock",
-    3: "Classical",
-    4: "Popularity",
+    3: "Soft",
+    4: "Classical",
     5: "Bass",
     6: "Subwoofer",
     7: "Soft",
@@ -637,18 +637,21 @@ class HaylouHeadphoneController:
         Sets the EQ preset. Tries attribute-based (ID 2) first, verifies, and falls back to config-based (ID 7).
         """
         write_val = EQ_WRITE_MAP.get(preset_idx, preset_idx)
+        valid_vals = (preset_idx, write_val)
 
         # 1. Try Attribute-based (Attr ID 2, opcode 8)
         self.set_setting(ATTR_WRITE_EQ_MODE, write_val)
         time.sleep(0.15)
-        if self.get_current_eq_preset_val() == write_val:
+        cur_val = self.get_current_eq_preset_val()
+        if cur_val in valid_vals or (cur_val is not None and EQ_PRESETS.get(cur_val) == EQ_PRESETS.get(preset_idx)):
             return True
 
         # 2. Fallback to Config-based (Config ID 7, opcode 242)
         payload = bytes([3, 0, 7, write_val])
         self.send_and_receive(OP_READ, 242, payload)
         time.sleep(0.15)
-        if self.get_current_eq_preset_val() == write_val:
+        cur_val = self.get_current_eq_preset_val()
+        if cur_val in valid_vals or (cur_val is not None and EQ_PRESETS.get(cur_val) == EQ_PRESETS.get(preset_idx)):
             return True
 
         return False
