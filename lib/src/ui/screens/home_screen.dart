@@ -171,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return widget.headphoneController.status.autoShutdownIndex ?? 4;
   }
   final List<String> _shutdownOptions = ['30 min', '1 hour', '3 hours', '5 hours', 'Never'];
+  static const List<String> _shutdownTickLabels = ['30m', '1h', '3h', '5h', 'Never'];
 
   // Custom EQ states (10-band slider values from -12 to +12 dB)
   final List<double> _eqValues = List.filled(10, 0.0);
@@ -844,9 +845,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<Widget> children,
     required EdgeInsetsGeometry padding,
     required bool isWide,
+    double maxWidth = 580,
   }) {
     final effectivePadding = isWide
-        ? const EdgeInsets.fromLTRB(20, 44, 20, 36)
+        ? const EdgeInsets.fromLTRB(24, 40, 24, 36)
         : padding;
 
     return CustomScrollView(
@@ -860,9 +862,10 @@ class _HomeScreenState extends State<HomeScreen> {
             actions: actions,
           ),
         SliverToBoxAdapter(
-          child: Center(
+          child: Align(
+            alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+              constraints: BoxConstraints(maxWidth: maxWidth),
               child: Padding(
                 padding: effectivePadding,
                 child: Column(
@@ -880,79 +883,184 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- CONTROL TAB ---
   Widget _buildControlTab(ThemeData theme, {required bool isWide}) {
-    final status = widget.headphoneController.status;
-    final isWearSupported = !_isOverEar && status.wearDetection != null;
-    final hasAudioFeatures = !_isConnected ||
-        status.gameMode != null ||
-        status.windNoise != null ||
-        status.multipoint != null ||
-        status.ldac != null ||
-        isWearSupported ||
-        status.spatialAudioMode != 'Unknown';
-    return _buildCenteredScrollable(
-      key: const ValueKey(0),
-      title: 'HL Control',
-      isWide: isWide,
-      actions: [
-        if (!_isConnected)
-          IconButton(
-            icon: const Icon(Icons.bluetooth_searching),
-            tooltip: 'Connect device',
-            onPressed: _connectDevice,
-          ),
-      ],
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
-      children: [
-        // Premium Product Image & Status Cluster
-        Center(
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeInOutCubic,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                _buildHeadphonesImage(theme),
-                const SizedBox(height: 24),
-                Text(
-                  _isConnected ? _deviceName : 'Disconnected',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final is2Pane = constraints.maxWidth >= 720;
+        final status = widget.headphoneController.status;
+        final isWearSupported = !_isOverEar && status.wearDetection != null;
+        final hasAudioFeatures = !_isConnected ||
+            status.gameMode != null ||
+            status.windNoise != null ||
+            status.multipoint != null ||
+            status.ldac != null ||
+            isWearSupported ||
+            status.spatialAudioMode != 'Unknown';
+
+        final actions = [
+          if (!_isConnected)
+            IconButton(
+              icon: const Icon(Icons.bluetooth_searching),
+              tooltip: 'Connect device',
+              onPressed: _connectDevice,
+            ),
+        ];
+
+        if (is2Pane) {
+          return _buildCenteredScrollable(
+            key: const ValueKey(0),
+            title: 'HL Control',
+            isWide: isWide,
+            maxWidth: 1000,
+            actions: actions,
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            children: [
+              // Top Hero (Full-width / Centered)
+              Center(
+                child: AnimatedSize(
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeInOutCubic,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 8),
+                      _buildHeadphonesImage(theme),
+                      const SizedBox(height: 20),
+                      Text(
+                        _isConnected ? _deviceName : 'Disconnected',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildStatusCluster(theme),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                _buildStatusCluster(theme),
-              ],
+              ),
+              const SizedBox(height: 32),
+
+              // 2 Equal Side-by-Side Cards Below Hero
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                opacity: _isConnected ? 1.0 : 0.45,
+                child: IgnorePointer(
+                  ignoring: !_isConnected,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left Card: Noise Control
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildSectionHeader(theme, 'Noise control'),
+                            const SizedBox(height: 12),
+                            _buildNoiseControlCard(theme),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      // Right Card: Audio Features & Secondary Controls
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (_isConnected && status.autoShutdownIndex != null && !_isOverEar) ...[
+                              _buildSectionHeader(theme, 'Auto shutdown'),
+                              const SizedBox(height: 12),
+                              _buildAutoShutdownCard(theme),
+                              const SizedBox(height: 24),
+                            ],
+                            if (hasAudioFeatures) ...[
+                              _buildSectionHeader(theme, 'Audio features'),
+                              const SizedBox(height: 12),
+                              _buildFeaturesCard(theme),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        // 1-Column Layout (< 720dp)
+        return _buildCenteredScrollable(
+          key: const ValueKey(0),
+          title: 'HL Control',
+          isWide: isWide,
+          maxWidth: 580,
+          actions: actions,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
+          children: [
+            // Premium Product Image & Status Cluster
+            Center(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOutCubic,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    _buildHeadphonesImage(theme),
+                    const SizedBox(height: 24),
+                    Text(
+                      _isConnected ? _deviceName : 'Disconnected',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildStatusCluster(theme),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 28),
+            const SizedBox(height: 28),
 
-        // Noise Control Section
-        if (!_isConnected || status.ancMode != 'Unknown') ...[
-          _buildSectionHeader(theme, 'Noise control'),
-          const SizedBox(height: 12),
-          _buildNoiseControlCard(theme),
-          const SizedBox(height: 28),
-        ],
+            // Interactive Controls Column (Dimmed & Locked when Disconnected)
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: _isConnected ? 1.0 : 0.45,
+              child: IgnorePointer(
+                ignoring: !_isConnected,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Noise Control Section
+                    _buildSectionHeader(theme, 'Noise control'),
+                    const SizedBox(height: 12),
+                    _buildNoiseControlCard(theme),
+                    const SizedBox(height: 28),
 
-        // Auto Shutdown Section
-        if (!_isConnected || (status.autoShutdownIndex != null && !_isOverEar)) ...[
-          _buildSectionHeader(theme, 'Auto shutdown'),
-          const SizedBox(height: 12),
-          _buildAutoShutdownCard(theme),
-          const SizedBox(height: 28),
-        ],
+                    // Auto Shutdown Section (only rendered when connected and confirmed)
+                    if (_isConnected && status.autoShutdownIndex != null && !_isOverEar) ...[
+                      _buildSectionHeader(theme, 'Auto shutdown'),
+                      const SizedBox(height: 12),
+                      _buildAutoShutdownCard(theme),
+                      const SizedBox(height: 28),
+                    ],
 
-        // Audio Features Section
-        if (hasAudioFeatures) ...[
-          _buildSectionHeader(theme, 'Audio features'),
-          const SizedBox(height: 12),
-          _buildFeaturesCard(theme),
-        ],
-      ],
+                    // Audio Features Section
+                    if (hasAudioFeatures) ...[
+                      _buildSectionHeader(theme, 'Audio features'),
+                      const SizedBox(height: 12),
+                      _buildFeaturesCard(theme),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1213,7 +1321,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           },
           icon: const Icon(Icons.link_off_rounded, size: 20),
-          tooltip: 'Disconnect',
+          tooltip: 'Disconnect headset',
           visualDensity: VisualDensity.compact,
           color: theme.colorScheme.onSurfaceVariant,
         ),
@@ -1407,7 +1515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     IconButton(
                       onPressed: _isConnected ? _showSavePresetDialog : null,
                       icon: const Icon(Icons.save),
-                      tooltip: 'Save preset',
+                      tooltip: 'Save custom preset',
                       visualDensity: VisualDensity.compact,
                     ),
                     IconButton(
@@ -1420,7 +1528,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             }
                           : null,
                       icon: const Icon(Icons.refresh),
-                      tooltip: 'Reset EQ',
+                      tooltip: 'Reset EQ sliders',
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
@@ -2014,8 +2122,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 return SizedBox(
                   height: 20,
                   child: Stack(
-                    children: List.generate(_shutdownOptions.length, (index) {
-                      final String labelText = _shutdownOptions[index].split(' ')[0];
+                    children: List.generate(_shutdownTickLabels.length, (index) {
+                      final String labelText = _shutdownTickLabels[index];
                       final double tickX = trackPadding + index * (trackWidth / 4);
 
                       return Positioned(
