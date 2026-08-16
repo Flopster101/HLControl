@@ -173,6 +173,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showDeletePresetDialog(Map<String, dynamic> preset) {
+    if (!_isConnected) return;
+    final name = preset['name'] as String;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 28),
+        title: const Text('Delete Preset'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Text(
+            'Are you sure you want to delete the custom preset "$name"?',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () {
+              setState(() {
+                _customPresets.remove(preset);
+              });
+              _saveCustomPresetsToPrefs();
+              Navigator.pop(context);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   bool _isFindingDevice = false;
 
   void _showRenameDialog() {
@@ -933,12 +972,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                             : null,
                         onDeleted: _isConnected
-                            ? () {
-                                setState(() {
-                                  _customPresets.remove(preset);
-                                });
-                                _saveCustomPresetsToPrefs();
-                              }
+                            ? () => _showDeletePresetDialog(preset)
                             : null,
                         deleteIcon: const Icon(Icons.close, size: 16),
                       );
