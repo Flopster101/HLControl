@@ -641,16 +641,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 32),
       children: [
-        _buildConnectionBanner(theme),
-        const SizedBox(height: 24),
-
-        // Premium Product Image & Battery Indicators
+        // Premium Product Image & Status Cluster
         Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 8),
               _buildHeadphonesImage(theme),
-              const SizedBox(height: 14),
+              const SizedBox(height: 24),
               Text(
                 _isConnected ? _deviceName : 'Disconnected',
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -659,12 +657,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 8),
-              _buildBatteryIndicator(theme),
+              const SizedBox(height: 10),
+              _buildStatusCluster(theme),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
 
         // Noise Control Section
         if (!_isConnected || status.ancMode != 'Unknown') ...[
@@ -822,45 +820,152 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBatteryIndicator(ThemeData theme) {
+  Widget _buildStatusCluster(ThemeData theme) {
     if (!_isConnected) {
-      return const SizedBox.shrink();
+      if (_isConnecting) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Connecting...',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return FilledButton.tonalIcon(
+        onPressed: _connectDevice,
+        icon: const Icon(Icons.bluetooth_searching, size: 18),
+        label: const Text('Connect Device'),
+        style: FilledButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+      );
     }
 
     final isLow = _batteryPercent <= 20;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: isLow
-            ? theme.colorScheme.errorContainer.withOpacity(0.5)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isLow
-              ? theme.colorScheme.error.withOpacity(0.3)
-              : theme.colorScheme.outlineVariant.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isLow ? Icons.battery_alert_rounded : Icons.battery_full_rounded,
-            size: 18,
-            color: isLow ? theme.colorScheme.error : theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$_batteryPercent%',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isLow ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        // Badge 1: Battery
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isLow
+                ? theme.colorScheme.errorContainer.withOpacity(0.5)
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isLow
+                  ? theme.colorScheme.error.withOpacity(0.3)
+                  : theme.colorScheme.outlineVariant.withOpacity(0.3),
+              width: 1,
             ),
           ),
-        ],
-      ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isLow ? Icons.battery_alert_rounded : Icons.battery_full_rounded,
+                size: 18,
+                color: isLow ? theme.colorScheme.error : theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$_batteryPercent%',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isLow ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Badge 2: Protocol status
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.bluetooth_connected_rounded,
+                size: 16,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'RFCOMM',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Disconnect Action
+        IconButton(
+          onPressed: () {
+            widget.headphoneController.disconnect();
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Disconnected from $_deviceName'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          icon: const Icon(Icons.link_off_rounded, size: 20),
+          tooltip: 'Disconnect',
+          visualDensity: VisualDensity.compact,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ],
     );
   }
 
@@ -1483,84 +1588,6 @@ class _HomeScreenState extends State<HomeScreen> {
       title,
       style: theme.textTheme.titleSmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,
-      ),
-    );
-  }
-
-  Widget _buildConnectionBanner(ThemeData theme) {
-    Color statusColor = Colors.red;
-    if (_isConnected) {
-      statusColor = Colors.green;
-    } else if (_isConnecting) {
-      statusColor = Colors.amber;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.2),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (_isConnecting)
-            const SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: statusColor,
-              ),
-            ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isConnected
-                      ? 'Connected via RFCOMM'
-                      : (_isConnecting ? 'Connecting...' : 'Disconnected'),
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  _isConnected
-                      ? 'Device: $_deviceName'
-                      : (widget.headphoneController.status.error != null
-                          ? 'Error: ${widget.headphoneController.status.error}'
-                          : 'No device connected'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: widget.headphoneController.status.error != null
-                        ? theme.colorScheme.error
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!_isConnected && !_isConnecting)
-            TextButton.icon(
-              onPressed: _connectDevice,
-              icon: const Icon(Icons.bluetooth),
-              label: const Text('Connect'),
-            )
-          else if (_isConnected)
-            TextButton.icon(
-              onPressed: () => widget.headphoneController.disconnect(),
-              icon: const Icon(Icons.bluetooth_disabled),
-              label: const Text('Disconnect'),
-              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-            ),
-        ],
       ),
     );
   }
