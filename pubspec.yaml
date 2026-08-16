@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   shared_preferences: ^2.5.5
   path: ^1.9.0
+  tray_manager: ^0.2.4
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

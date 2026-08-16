@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'src/core/controllers/headphone_controller.dart';
+import 'src/core/services/tray_service.dart';
 import 'src/ui/screens/home_screen.dart';
 import 'src/ui/theme/app_theme.dart';
 import 'src/ui/theme/theme_controller.dart';
@@ -15,6 +16,13 @@ void main() async {
 
   // Initialize HeadphoneController (coordinates real Bluetooth & simulated states)
   final headphoneController = HeadphoneController(themeController);
+
+  // Initialize Desktop System Tray Service (Linux / Windows)
+  final trayService = TrayService(
+    headphoneController: headphoneController,
+    themeController: themeController,
+  );
+  await trayService.init();
 
   runApp(HlControlApp(
     themeController: themeController,

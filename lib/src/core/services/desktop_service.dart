@@ -377,20 +377,27 @@ class DesktopHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setSpatialAudio(String mode) async {
+    final normalized = mode.toLowerCase();
     int val;
-    switch (mode) {
-      case 'Dynamic':
+    switch (normalized) {
+      case 'dynamic':
         val = 0;
         break;
-      case 'Static':
+      case 'static':
         val = 1;
         break;
-      case 'Off':
+      case 'off':
       default:
         val = 2;
         break;
     }
-    _updateStatus(_status.copyWith(spatialAudioMode: mode));
+    String canonicalMode;
+    switch (val) {
+      case 0: canonicalMode = 'Dynamic'; break;
+      case 1: canonicalMode = 'Static'; break;
+      default: canonicalMode = 'Off'; break;
+    }
+    _updateStatus(_status.copyWith(spatialAudioMode: canonicalMode));
     _sendCommand('set_spatial_audio', val);
   }
 
