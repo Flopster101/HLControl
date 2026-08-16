@@ -1481,6 +1481,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                               trackHeight: 3,
                                               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                                               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                                              activeTrackColor: theme.colorScheme.primary,
+                                              inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                                              thumbColor: theme.colorScheme.primary,
+                                              overlayColor: theme.colorScheme.primary.withOpacity(0.12),
                                             ),
                                             child: Slider(
                                               value: _eqValues[index],
@@ -1508,14 +1512,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                         '${_eqValues[index].round() > 0 ? "+" : ""}${_eqValues[index].round()}',
                                         style: theme.textTheme.labelSmall?.copyWith(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 9,
-                                          color: _eqValues[index] != 0.0 ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                                          color: _eqValues[index] != 0.0 ? theme.colorScheme.primary : theme.colorScheme.onSurface,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         _eqBands[index],
-                                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 8),
+                                        style: theme.textTheme.labelSmall?.copyWith(
+                                          color: theme.colorScheme.onSurfaceVariant,
+                                          fontSize: 9,
+                                        ),
                                       ),
                                     ],
                                   ),
