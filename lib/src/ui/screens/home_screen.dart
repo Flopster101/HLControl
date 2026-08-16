@@ -813,40 +813,40 @@ class _HomeScreenState extends State<HomeScreen> {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Chip(
-          avatar: Icon(
-            _batteryPercent > 20 ? Icons.battery_5_bar : Icons.battery_alert,
-            size: 16,
-            color: theme.colorScheme.primary,
-          ),
-          label: Text(
-            '$_batteryPercent% Battery',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          side: BorderSide(color: theme.colorScheme.outlineVariant.withOpacity(0.3)),
-          backgroundColor: theme.cardColor,
+    final isLow = _batteryPercent <= 20;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: isLow
+            ? theme.colorScheme.errorContainer.withOpacity(0.5)
+            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isLow
+              ? theme.colorScheme.error.withOpacity(0.3)
+              : theme.colorScheme.outlineVariant.withOpacity(0.3),
+          width: 1,
         ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: 140,
-          height: 4,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: _batteryPercent / 100.0,
-              backgroundColor: theme.colorScheme.onSurface.withOpacity(0.16),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _batteryPercent > 25
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.error,
-              ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLow ? Icons.battery_alert_rounded : Icons.battery_full_rounded,
+            size: 18,
+            color: isLow ? theme.colorScheme.error : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$_batteryPercent%',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isLow ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
