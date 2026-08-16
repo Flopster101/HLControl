@@ -18,11 +18,35 @@ class AppTheme {
       dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
     );
 
+    final baseTextTheme = ThemeData(brightness: brightness).textTheme;
+
     return ThemeData(
       brightness: brightness,
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
+      textTheme: baseTextTheme.copyWith(
+        // App / screen titles
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        // List titles & main card headers
+        titleMedium: baseTextTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+        // Section headers (Noise control, Audio features)
+        titleSmall: baseTextTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        // Buttons, Chips & Status Pills
+        labelLarge: baseTextTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+        labelMedium: baseTextTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerHighest,
         elevation: 0,

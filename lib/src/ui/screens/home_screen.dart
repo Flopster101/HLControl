@@ -1598,9 +1598,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSectionHeader(ThemeData theme, String title) {
     return Text(
       title,
-      style: theme.textTheme.titleSmall?.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-      ),
+      style: theme.textTheme.titleSmall,
     );
   }
 
