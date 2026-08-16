@@ -8,38 +8,23 @@ class AppTheme {
   AppTheme._();
 
   static const Color seedColor = Color(0xFF045AED); // Haylou Vivid Blue
-  static const Color backgroundColor = Color(0xFF0C0D12); // Sleek deep space color
-  static const Color cardColor = Color(0xFF161722); // Elegant slightly lighter card surfaces
 
   /// Builds a [ThemeData] based on target brightness and optional dynamic Material You color scheme.
   static ThemeData buildTheme(Brightness brightness, ColorScheme? dynamicColorScheme) {
-    final isDark = brightness == Brightness.dark;
-
-    ColorScheme colorScheme;
-    if (dynamicColorScheme != null) {
-      colorScheme = dynamicColorScheme;
-    } else {
-      colorScheme = ColorScheme.fromSeed(
-        seedColor: seedColor,
-        brightness: brightness,
-        surface: isDark ? backgroundColor : null,
-      );
-    }
+    final seed = dynamicColorScheme?.primary ?? seedColor;
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: seed,
+      brightness: brightness,
+      dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+    );
 
     return ThemeData(
       brightness: brightness,
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: isDark
-          ? (dynamicColorScheme != null ? colorScheme.surface : backgroundColor)
-          : null,
+      scaffoldBackgroundColor: colorScheme.surface,
       cardTheme: CardThemeData(
-        color: dynamicColorScheme != null
-            ? Color.alphaBlend(
-                colorScheme.primary.withOpacity(0.08),
-                colorScheme.surface,
-              )
-            : (isDark ? cardColor : null),
+        color: colorScheme.surfaceContainerHighest,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: const RoundedRectangleBorder(
@@ -59,6 +44,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
       ),
       chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.surfaceContainerHigh,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),

@@ -304,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: theme.colorScheme.outlineVariant.withOpacity(0.5),
@@ -784,7 +784,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                  color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.6),
                   border: Border.all(
                     color: theme.colorScheme.outlineVariant.withOpacity(0.35),
                     width: 1.5,
@@ -838,7 +838,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: theme.colorScheme.outlineVariant.withOpacity(0.3),
@@ -891,7 +891,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: isLow
                 ? theme.colorScheme.errorContainer.withOpacity(0.5)
-                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                : theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isLow
@@ -924,7 +924,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: theme.colorScheme.outlineVariant.withOpacity(0.3),

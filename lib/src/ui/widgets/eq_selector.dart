@@ -53,7 +53,7 @@ class EqSelector extends StatelessWidget {
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected ? color : theme.colorScheme.onSurface,
               ),
-              backgroundColor: theme.cardColor,
+              backgroundColor: theme.colorScheme.surfaceContainerHigh,
             ),
           );
         },
