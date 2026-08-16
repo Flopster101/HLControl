@@ -50,6 +50,8 @@ cp -r build/linux/x64/release/bundle/. "${APP_DIR}/usr/bin/"
 cp packaging/linux/com.flopster101.hlcontrol.desktop "${APP_DIR}/"
 cp packaging/linux/com.flopster101.hlcontrol.png "${APP_DIR}/"
 cp packaging/linux/com.flopster101.hlcontrol.png "${APP_DIR}/.DirIcon"
+mkdir -p "${APP_DIR}/usr/share/icons"
+cp -r packaging/linux/icons/hicolor "${APP_DIR}/usr/share/icons/"
 
 # 4. Create AppRun entrypoint
 cat << 'EOF' > "${APP_DIR}/AppRun"

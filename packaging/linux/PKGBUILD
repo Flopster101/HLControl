@@ -49,9 +49,15 @@ package() {
     install -Dm644 packaging/linux/com.flopster101.hlcontrol.desktop \
         "${pkgdir}/usr/share/applications/com.flopster101.hlcontrol.desktop"
 
-    # Install icons (Hicolor theme & Pixmaps)
-    install -Dm644 packaging/linux/com.flopster101.hlcontrol.png \
-        "${pkgdir}/usr/share/icons/hicolor/192x192/apps/com.flopster101.hlcontrol.png"
+    # Install icons (Hicolor scalable SVG, multi-resolution PNGs, & Pixmaps)
+    install -Dm644 packaging/linux/icons/hicolor/scalable/apps/com.flopster101.hlcontrol.svg \
+        "${pkgdir}/usr/share/icons/hicolor/scalable/apps/com.flopster101.hlcontrol.svg"
+    for sz in 48 64 128 256 512; do
+        install -Dm644 "packaging/linux/icons/hicolor/${sz}x${sz}/apps/com.flopster101.hlcontrol.png" \
+            "${pkgdir}/usr/share/icons/hicolor/${sz}x${sz}/apps/com.flopster101.hlcontrol.png"
+    done
     install -Dm644 packaging/linux/com.flopster101.hlcontrol.png \
         "${pkgdir}/usr/share/pixmaps/com.flopster101.hlcontrol.png"
+    install -Dm644 packaging/linux/com.flopster101.hlcontrol.png \
+        "${pkgdir}/usr/share/pixmaps/hlcontrol.png"
 }
