@@ -2674,19 +2674,19 @@ class _SidebarItemState extends State<_SidebarItem> {
 
     Color? backgroundColor;
     if (isSelected) {
-      backgroundColor = theme.colorScheme.primaryContainer;
+      backgroundColor = theme.colorScheme.secondaryContainer;
     } else if (_isHovered) {
-      backgroundColor = theme.colorScheme.primary.withOpacity(0.08);
+      backgroundColor = theme.colorScheme.onSurface.withOpacity(0.08);
     } else {
       backgroundColor = Colors.transparent;
     }
 
     final foregroundColor = isSelected
-        ? theme.colorScheme.onPrimaryContainer
+        ? theme.colorScheme.onSecondaryContainer
         : theme.colorScheme.onSurfaceVariant;
 
     final textColor = isSelected
-        ? theme.colorScheme.onPrimaryContainer
+        ? theme.colorScheme.onSecondaryContainer
         : theme.colorScheme.onSurface;
 
     return Padding(
@@ -2699,14 +2699,15 @@ class _SidebarItemState extends State<_SidebarItem> {
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
             hoverColor: Colors.transparent,
-            highlightColor: theme.colorScheme.primary.withOpacity(0.12),
+            highlightColor: theme.colorScheme.secondaryContainer.withOpacity(0.24),
+            splashColor: theme.colorScheme.onSecondaryContainer.withOpacity(0.12),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(28),
                 color: backgroundColor,
               ),
               child: Row(
@@ -2719,7 +2720,7 @@ class _SidebarItemState extends State<_SidebarItem> {
                   Text(
                     widget.label,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: textColor,
                     ),
                   ),
