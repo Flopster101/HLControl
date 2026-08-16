@@ -97,7 +97,9 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   void _updateStatus(HeadphoneStatus newStatus) {
     _status = newStatus;
-    _controller.add(_status);
+    if (!_controller.isClosed) {
+      _controller.add(_status);
+    }
   }
 
   @override

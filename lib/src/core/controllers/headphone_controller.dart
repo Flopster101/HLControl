@@ -129,6 +129,14 @@ class HeadphoneController extends ChangeNotifier {
     await _service.setWearDetection(enabled);
   }
 
+  Future<void> setAntiLeak(bool enabled) async {
+    await _service.setAntiLeak(enabled);
+  }
+
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {
+    await _service.setGesture(gestureType, leftFunc, rightFunc);
+  }
+
   Future<void> setAutoShutdown(int choiceIndex) async {
     // Map choiceIndex (0=30m, 1=1h, 2=3h, 3=5h, 4=Never) to Liesheng protocol byte values:
     // 0 -> 1 (30 mins)

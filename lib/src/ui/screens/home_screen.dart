@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_version.dart';
 import '../../core/controllers/headphone_controller.dart';
 import '../../core/models/bluetooth_device.dart';
+import '../../core/models/headphone_status.dart';
 import '../theme/theme_controller.dart';
 import '../widgets/anc_selector.dart';
 import '../widgets/eq_selector.dart';
@@ -29,13 +30,11 @@ class _HomeScreenState extends State<HomeScreen> {
   int _versionTapCount = 0;
 
   // Getters from HeadphoneController
+  HeadphoneStatus get _status => widget.headphoneController.status;
   bool get _isConnected => widget.headphoneController.isConnected;
   bool get _isConnecting => widget.headphoneController.isConnecting;
   String get _deviceName => widget.headphoneController.deviceName;
-  bool get _isOverEar {
-    final name = _deviceName.toLowerCase();
-    return name.contains('s40') || name.contains('s35') || name.contains('s30');
-  }
+  bool get _isOverEar => !_status.isTws;
   int get _batteryPercent => widget.headphoneController.batteryPercent;
 
   // Optimistic UI state overrides and in-flight lock tracking
@@ -166,6 +165,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return widget.headphoneController.status.wearDetection ?? false;
   }
 
+  bool get _antiLeak {
+    if (_optimisticOverrides.containsKey('anti_leak')) {
+      return _optimisticOverrides['anti_leak'] as bool;
+    }
+    return widget.headphoneController.status.antiLeak ?? false;
+  }
+
   int get _autoShutdownIndex {
     if (_optimisticOverrides.containsKey('auto_shutdown')) {
       return _optimisticOverrides['auto_shutdown'] as int;
@@ -197,10 +203,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const Map<String, List<double>> _presetValues = {
     'Default': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-    'Subwoofer': [6.0, 5.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    'Vocal': [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 3.5, 3.0, 2.0, 1.0],
     'Rock': [4.0, 3.0, -1.0, -2.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0],
-    'Soft': [-2.0, -1.0, 0.0, 1.0, 2.0, 2.0, 1.0, 0.0, -1.0, -2.0],
     'Classical': [3.0, 2.0, 1.5, 1.0, -1.0, -1.5, 1.0, 2.0, 2.5, 3.0],
+    'Popularity': [1.0, 2.0, 3.0, 2.0, 0.0, -1.0, 1.0, 2.0, 3.0, 2.0],
+    'Bass': [5.0, 4.0, 3.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    'Subwoofer': [6.0, 5.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    'Soft': [-2.0, -1.0, 0.0, 1.0, 2.0, 2.0, 1.0, 0.0, -1.0, -2.0],
+    'Outdoor': [3.0, 2.0, 0.0, 0.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0],
   };
 
   @override
@@ -365,6 +375,153 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showGestureConfigDialog() {
+    int selectedGestureType = 1; // 1=Double Tap, 2=Triple Tap, 3=Long Press
+
+    const gestureFunctions = <int, String>{
+      0: 'Voice assistant',
+      1: 'Play / pause',
+      2: 'Previous track',
+      3: 'Next track',
+      4: 'Volume up',
+      5: 'Volume down',
+      6: 'Cycle ANC mode',
+      7: 'Low-latency game mode',
+      255: 'Disabled',
+    };
+
+    final gestures = _status.gestures ?? {};
+    int leftFunc = (gestures['1']?['left_func'] as num?)?.toInt() ?? 1;
+    int rightFunc = (gestures['1']?['right_func'] as num?)?.toInt() ?? 3;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final theme = Theme.of(context);
+
+            void updateSelectedType(int type) {
+              final typeKey = type.toString();
+              setDialogState(() {
+                selectedGestureType = type;
+                leftFunc = (gestures[typeKey]?['left_func'] as num?)?.toInt() ?? (type == 1 ? 1 : 255);
+                rightFunc = (gestures[typeKey]?['right_func'] as num?)?.toInt() ?? (type == 1 ? 3 : 255);
+              });
+            }
+
+            return AlertDialog(
+              scrollable: true,
+              icon: Icon(Icons.touch_app, color: theme.colorScheme.primary, size: 28),
+              title: const Text('Touch gestures', textAlign: TextAlign.center),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Configure action per earbud for capacitive touch gestures.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    SegmentedButton<int>(
+                      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                      segments: const [
+                        ButtonSegment(value: 1, label: Text('Double tap')),
+                        ButtonSegment(value: 2, label: Text('Triple tap')),
+                        ButtonSegment(value: 3, label: Text('Long press')),
+                      ],
+                      selected: {selectedGestureType},
+                      onSelectionChanged: (newSel) {
+                        updateSelectedType(newSel.first);
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    // Left earbud selector
+                    Text(
+                      'Left earbud action',
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      value: leftFunc,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: gestureFunctions.entries.map((e) {
+                        return DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => leftFunc = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Right earbud selector
+                    Text(
+                      'Right earbud action',
+                      style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      value: rightFunc,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(),
+                      ),
+                      items: gestureFunctions.entries.map((e) {
+                        return DropdownMenuItem(
+                          value: e.key,
+                          child: Text(e.value),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => rightFunc = val);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await widget.headphoneController.setGesture(selectedGestureType, leftFunc, rightFunc);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Touch gesture updated.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _toggleFindDevice() async {
     if (!_isConnected) return;
     final newPlaying = !_isFindingDevice;
@@ -495,7 +652,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _handleEqPresetChanged(String preset) {
     if (!_isConnected || _inFlightControls.contains('eq_preset')) return;
-    final presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
+    final presets = _status.eqType == 's40'
+        ? EqSelector.defaultS40Presets
+        : EqSelector.standardPresets;
     final idx = presets.indexOf(preset);
     if (idx != -1) {
       final vals = _presetValues[preset];
@@ -546,6 +705,17 @@ class _HomeScreenState extends State<HomeScreen> {
       newValue: val,
       currentValue: _wearDetection,
       action: () => widget.headphoneController.setWearDetection(val),
+    );
+  }
+
+  void _handleAntiLeakChanged(bool val) {
+    if (!_isConnected || _inFlightControls.contains('anti_leak')) return;
+    _executeOptimisticAction<bool>(
+      controlKey: 'anti_leak',
+      controlName: 'anti-sound leak',
+      newValue: val,
+      currentValue: _antiLeak,
+      action: () => widget.headphoneController.setAntiLeak(val),
     );
   }
 
@@ -1096,24 +1266,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left Card: Noise Control
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildSectionHeader(theme, 'Noise control'),
-                            const SizedBox(height: 12),
-                            _buildNoiseControlCard(theme),
-                          ],
+                      if (!_isConnected || status.hasAnc) ...[
+                        // Left Card: Noise Control
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSectionHeader(theme, 'Noise control'),
+                              const SizedBox(height: 12),
+                              _buildNoiseControlCard(theme),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 24),
+                        const SizedBox(width: 24),
+                      ],
                       // Right Card: Audio Features & Secondary Controls
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (_isConnected && status.autoShutdownIndex != null && !_isOverEar) ...[
+                            if (_isConnected && status.hasAutoShutdown && status.autoShutdownIndex != null) ...[
                               _buildSectionHeader(theme, 'Auto shutdown'),
                               const SizedBox(height: 12),
                               _buildAutoShutdownCard(theme),
@@ -1181,13 +1353,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Noise Control Section
-                    _buildSectionHeader(theme, 'Noise control'),
-                    const SizedBox(height: 12),
-                    _buildNoiseControlCard(theme),
-                    const SizedBox(height: 28),
+                    if (!_isConnected || status.hasAnc) ...[
+                      _buildSectionHeader(theme, 'Noise control'),
+                      const SizedBox(height: 12),
+                      _buildNoiseControlCard(theme),
+                      const SizedBox(height: 28),
+                    ],
 
-                    // Auto Shutdown Section (only rendered when connected and confirmed)
-                    if (_isConnected && status.autoShutdownIndex != null && !_isOverEar) ...[
+                    // Auto Shutdown Section (only rendered when connected and supported)
+                    if (_isConnected && status.hasAutoShutdown && status.autoShutdownIndex != null) ...[
                       _buildSectionHeader(theme, 'Auto shutdown'),
                       const SizedBox(height: 12),
                       _buildAutoShutdownCard(theme),
@@ -1371,7 +1545,78 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    final isLow = _batteryPercent <= 20;
+    final List<Widget> batteryBadges = [];
+
+    Widget buildBatteryPill({
+      required IconData icon,
+      required String label,
+      required int percent,
+    }) {
+      final isLow = percent <= 20;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isLow
+              ? theme.colorScheme.errorContainer.withOpacity(0.5)
+              : theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isLow
+                ? theme.colorScheme.error.withOpacity(0.3)
+                : theme.colorScheme.outlineVariant.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isLow ? theme.colorScheme.error : theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '$label$percent%',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isLow ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_status.isTws) {
+      if (_status.batteryLeft != null) {
+        batteryBadges.add(buildBatteryPill(
+          icon: Icons.headphones_rounded,
+          label: 'L: ',
+          percent: _status.batteryLeft!,
+        ));
+      }
+      if (_status.batteryRight != null) {
+        batteryBadges.add(buildBatteryPill(
+          icon: Icons.headphones_rounded,
+          label: 'R: ',
+          percent: _status.batteryRight!,
+        ));
+      }
+      if (_status.batteryCase != null) {
+        batteryBadges.add(buildBatteryPill(
+          icon: Icons.charging_station_rounded,
+          label: 'Case: ',
+          percent: _status.batteryCase!,
+        ));
+      }
+    } else {
+      batteryBadges.add(buildBatteryPill(
+        icon: _batteryPercent <= 20 ? Icons.battery_alert_rounded : Icons.battery_full_rounded,
+        label: '',
+        percent: _batteryPercent,
+      ));
+    }
 
     return Wrap(
       alignment: WrapAlignment.center,
@@ -1379,40 +1624,8 @@ class _HomeScreenState extends State<HomeScreen> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        // Badge 1: Battery
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isLow
-                ? theme.colorScheme.errorContainer.withOpacity(0.5)
-                : theme.colorScheme.surfaceContainerHigh.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isLow
-                  ? theme.colorScheme.error.withOpacity(0.3)
-                  : theme.colorScheme.outlineVariant.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isLow ? Icons.battery_alert_rounded : Icons.battery_full_rounded,
-                size: 18,
-                color: isLow ? theme.colorScheme.error : theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '$_batteryPercent%',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: isLow ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
+        // Battery Badges (Single or TWS L/R/Case)
+        ...batteryBadges,
 
         // Badge 2: Protocol status
         Container(
@@ -1582,6 +1795,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       opacity: _isConnected ? 1.0 : 0.4,
                       child: EqSelector(
                         selectedPreset: _selectedEqPreset,
+                        presets: _status.eqType == 's40'
+                            ? EqSelector.defaultS40Presets
+                            : EqSelector.standardPresets,
                         enabled: _isConnected,
                         onChanged: _handleEqPresetChanged,
                       ),
@@ -1647,6 +1863,9 @@ class _HomeScreenState extends State<HomeScreen> {
               opacity: _isConnected ? 1.0 : 0.4,
               child: EqSelector(
                 selectedPreset: _selectedEqPreset,
+                presets: _status.eqType == 's40'
+                    ? EqSelector.defaultS40Presets
+                    : EqSelector.standardPresets,
                 enabled: _isConnected,
                 onChanged: _handleEqPresetChanged,
               ),
@@ -2148,6 +2367,21 @@ class _HomeScreenState extends State<HomeScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: _isConnected ? _showRenameDialog : null,
           ),
+          if (_isConnected && _status.hasGestures) ...[
+            Divider(
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withOpacity(0.35),
+              indent: 16,
+              endIndent: 16,
+            ),
+            ListTile(
+              leading: const Icon(Icons.touch_app_outlined),
+              title: const Text('Touch gestures'),
+              subtitle: const Text('Customize double tap, triple tap, and long press'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _showGestureConfigDialog,
+            ),
+          ],
           Divider(
             height: 1,
             color: theme.colorScheme.outlineVariant.withOpacity(0.35),
@@ -2562,7 +2796,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Wind Noise Reduction
-    if (!_isConnected || status.windNoise != null) {
+    if (!_isConnected || (status.hasAnc && status.windNoise != null)) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.air),
@@ -2586,7 +2820,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // LDAC High-Resolution Audio
-    if (!_isConnected || status.ldac != null) {
+    if (!_isConnected || status.hasLdac) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.high_quality),
@@ -2598,7 +2832,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Smart Wear Detection
-    if (!_isConnected || (!_isOverEar && status.wearDetection != null)) {
+    if (!_isConnected || status.hasWearDetection) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.hearing),
@@ -2609,8 +2843,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ));
     }
 
-    // Spatial Audio
-    if (!_isConnected || status.spatialAudioMode != 'Unknown') {
+    // Anti-Sound Leak (BC04 Purfree Lite)
+    if (_isConnected && status.hasAntiLeak) {
+      addDividerIfNotEmpty();
+      children.add(SwitchListTile(
+        secondary: const Icon(Icons.volume_off),
+        title: const Text('Anti-sound leak'),
+        subtitle: const Text('Reduces audio leakage in open-ear mode'),
+        value: _antiLeak,
+        onChanged: _isConnected ? _handleAntiLeakChanged : null,
+      ));
+    }
+
+    // Spatial Audio (S40)
+    if (!_isConnected || status.hasSpatialAudio) {
       addDividerIfNotEmpty();
       children.add(_buildSpatialAudioTile(theme));
     }
