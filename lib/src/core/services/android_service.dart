@@ -262,8 +262,6 @@ class AndroidHeadphoneService implements HeadphoneService {
   Future<void> _writeSetting(int attrId, int val) async {
     final tlv = buildSettingTlv(attrId, Uint8List.fromList([val]));
     await _writePacket(opRead, cmdSetDeviceInfo, tlv);
-    await Future.delayed(const Duration(milliseconds: 150));
-    await _queryStatus();
   }
 
   Future<void> _queryStatus() async {
@@ -503,62 +501,102 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setAncMode(int mode) async {
+    final modeName = ancModes[mode] ?? 'Normal (Off)';
+    _updateStatus(_status.copyWith(ancMode: modeName));
     await _writeSetting(4, mode);
   }
 
   @override
   Future<void> setAncLevel(int level) async {
+    _updateStatus(_status.copyWith(ancIntensity: level));
     // Config ID 11 (opcode 242, opRead): payload is [length=4, config_id_hi=0, config_id_lo=11, 1, level]
     await _writePacket(opRead, 242, Uint8List.fromList([4, 0, 11, 1, level]));
-    await Future.delayed(const Duration(milliseconds: 150));
-    await _queryStatus();
   }
 
   @override
   Future<void> setGameMode(bool enabled) async {
+    _updateStatus(_status.copyWith(gameMode: enabled));
     await _writeSetting(5, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setWindNoise(bool enabled) async {
+    _updateStatus(_status.copyWith(windNoise: enabled));
     await _writeSetting(12, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setMultipoint(bool enabled) async {
+    _updateStatus(_status.copyWith(multipoint: enabled));
     await _writeSetting(9, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setLdac(bool enabled) async {
+    _updateStatus(_status.copyWith(ldac: enabled));
     await _writeSetting(8, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setWearDetection(bool enabled) async {
+    _updateStatus(_status.copyWith(wearDetection: enabled));
     await _writeSetting(13, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setAntiLeak(bool enabled) async {
+    _updateStatus(_status.copyWith(antiLeak: enabled));
     await _writeSetting(7, enabled ? 1 : 0);
   }
 
   @override
   Future<void> setAutoShutdown(int timerVal) async {
+    int idx;
+    switch (timerVal) {
+      case 1: idx = 0; break;
+      case 2: idx = 1; break;
+      case 6: idx = 2; break;
+      case 10: idx = 3; break;
+      default: idx = 4;
+    }
+    _updateStatus(_status.copyWith(autoShutdownIndex: idx));
     await _writeSetting(0, timerVal);
   }
 
   @override
   Future<void> setSpatialAudio(String mode) async {
-    int val = 2; // Off
-    if (mode == 'Dynamic') val = 0;
-    if (mode == 'Static') val = 1;
+    final normalized = mode.toLowerCase();
+    int val;
+    String canonical;
+    switch (normalized) {
+      case 'dynamic':
+        val = 0;
+        canonical = 'Dynamic';
+        break;
+      case 'static':
+        val = 1;
+        canonical = 'Static';
+        break;
+      case 'off':
+      default:
+        val = 2;
+        canonical = 'Off';
+        break;
+    }
+    _updateStatus(_status.copyWith(spatialAudioMode: canonical));
     await _writeSetting(10, val);
   }
 
   @override
   Future<void> setSpatialScene(int sceneIdx) async {
+    String scene;
+    switch (sceneIdx) {
+      case 0: scene = 'Music'; break;
+      case 1: scene = 'Sport'; break;
+      case 2: scene = 'Movie'; break;
+      default: scene = 'Music';
+    }
+    _updateStatus(_status.copyWith(spatialScene: scene));
     await _writeSetting(11, sceneIdx);
   }
 
@@ -566,16 +604,31 @@ class AndroidHeadphoneService implements HeadphoneService {
   Future<void> setEqPreset(int presetIdx) async {
     final isS40 = _status.eqType == 's40';
     final writeVal = isS40 ? (const {0: 0, 1: 6, 2: 2, 3: 7, 4: 3}[presetIdx] ?? presetIdx) : presetIdx;
+    
+    final standardPresets = ['Default', 'Vocal', 'Rock', 'Classical', 'Popularity', 'Bass', 'Subwoofer', 'Soft', 'Outdoor'];
+    final s40Presets = ['Default', 'Subwoofer', 'Rock', 'Soft', 'Classical'];
+    String presetName;
+    if (presetIdx == 15 || presetIdx == 240) {
+      presetName = 'Custom/Customize';
+    } else if (isS40 && presetIdx >= 0 && presetIdx < s40Presets.length) {
+      presetName = s40Presets[presetIdx];
+    } else if (presetIdx >= 0 && presetIdx < standardPresets.length) {
+      presetName = standardPresets[presetIdx];
+    } else {
+      presetName = 'Default';
+    }
+    _updateStatus(_status.copyWith(eqPreset: presetName));
+
     await _writeSetting(2, writeVal);
     // Also send Config 7
     final cfgPayload = Uint8List.fromList([3, 0, 7, writeVal]);
     await _writePacket(opRead, 242, cfgPayload);
-    await Future.delayed(const Duration(milliseconds: 150));
-    await _queryStatus();
   }
 
   @override
   Future<void> setCustomEq(List<double> gains) async {
+    _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
+
     const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
     final items = <String>[];
     for (var i = 0; i < frequencies.length; i++) {
