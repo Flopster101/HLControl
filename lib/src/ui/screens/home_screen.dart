@@ -891,11 +891,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
                         ),
                         Expanded(
-                          child: Container(
-                            color: theme.colorScheme.surface,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: _buildCurrentTabContent(theme, isWide: true),
+                          child: SafeArea(
+                            left: false,
+                            child: Container(
+                              color: theme.colorScheme.surface,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: _buildCurrentTabContent(theme, isWide: true),
+                              ),
                             ),
                           ),
                         ),
@@ -1164,12 +1167,23 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isWide,
     double maxWidth = 580,
   }) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final double defaultBottomPadding = isWide ? 80.0 : 48.0;
+
     final effectivePadding = isWide
-        ? const EdgeInsets.fromLTRB(24, 40, 24, 36)
-        : padding;
+        ? EdgeInsets.fromLTRB(24, 24, 24, defaultBottomPadding + bottomInset)
+        : (padding is EdgeInsets
+            ? EdgeInsets.fromLTRB(
+                padding.left,
+                padding.top,
+                padding.right,
+                padding.bottom + bottomInset,
+              )
+            : padding);
 
     return CustomScrollView(
       key: key,
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         if (!isWide)
           SliverAppBar.large(
