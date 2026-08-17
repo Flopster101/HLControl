@@ -2950,42 +2950,51 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        if (_isConnected && _spatialAudioMode != 'Off') ...[
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Spatial preset scene',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<String>(
-                    style: const ButtonStyle(
-                      visualDensity: VisualDensity.compact,
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOutCubic,
+          child: (_isConnected && _spatialAudioMode != 'Off')
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Spatial preset scene',
+                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: SegmentedButton<String>(
+                              style: const ButtonStyle(
+                                visualDensity: VisualDensity.compact,
+                              ),
+                              segments: spatialSceneOptions.map((scene) {
+                                return ButtonSegment<String>(
+                                  value: scene,
+                                  label: Text(scene),
+                                );
+                              }).toList(),
+                              selected: {_spatialScene},
+                              onSelectionChanged: _isConnected
+                                  ? (newSelection) {
+                                      _handleSpatialSceneChanged(newSelection.first);
+                                    }
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    segments: spatialSceneOptions.map((scene) {
-                      return ButtonSegment<String>(
-                        value: scene,
-                        label: Text(scene),
-                      );
-                    }).toList(),
-                    selected: {_spatialScene},
-                    onSelectionChanged: _isConnected
-                        ? (newSelection) {
-                            _handleSpatialSceneChanged(newSelection.first);
-                          }
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
