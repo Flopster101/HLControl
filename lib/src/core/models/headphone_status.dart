@@ -1,3 +1,5 @@
+import 'device_model.dart';
+
 class HeadphoneStatus {
   final bool isConnected;
   final bool isConnecting;
@@ -50,16 +52,21 @@ class HeadphoneStatus {
   });
 
   bool get isTws => batteryLeft != null && batteryRight != null;
-  Map<String, dynamic> get modelCapabilities => (modelInfo?['capabilities'] as Map<String, dynamic>?) ?? const {};
-  bool get hasAnc => modelCapabilities['has_anc'] as bool? ?? true;
-  bool get hasAncLevels => modelCapabilities['has_anc_levels'] as bool? ?? true;
-  bool get hasSpatialAudio => modelCapabilities['has_spatial_audio'] as bool? ?? false;
-  bool get hasLdac => modelCapabilities['has_ldac'] as bool? ?? false;
-  bool get hasGestures => modelCapabilities['has_gestures'] as bool? ?? false;
-  bool get hasWearDetection => modelCapabilities['has_wear_detection'] as bool? ?? false;
-  bool get hasAutoShutdown => modelCapabilities['has_auto_shutdown'] as bool? ?? true;
-  bool get hasAntiLeak => modelCapabilities['has_anti_leak'] as bool? ?? false;
-  String get eqType => modelCapabilities['eq_type'] as String? ?? 'standard';
+
+  DeviceModel get deviceModel => modelInfo != null
+      ? DeviceModel.fromMap(modelInfo!)
+      : DeviceModel.identify(deviceName);
+
+  Map<String, dynamic> get modelCapabilities => deviceModel.capabilities;
+  bool get hasAnc => deviceModel.hasAnc;
+  bool get hasAncLevels => deviceModel.hasAncLevels;
+  bool get hasSpatialAudio => deviceModel.hasSpatialAudio;
+  bool get hasLdac => deviceModel.hasLdac;
+  bool get hasGestures => deviceModel.hasGestures;
+  bool get hasWearDetection => deviceModel.hasWearDetection;
+  bool get hasAutoShutdown => deviceModel.hasAutoShutdown;
+  bool get hasAntiLeak => deviceModel.hasAntiLeak;
+  String get eqType => deviceModel.eqType;
 
   factory HeadphoneStatus.disconnected() {
     return HeadphoneStatus(

@@ -38,9 +38,19 @@ class HeadphoneController extends ChangeNotifier {
       }
     }
 
+    final initialName = themeController.lastConnectedName;
     _status = _service.currentStatus;
+    if (!_status.isConnected && initialName.isNotEmpty && _status.deviceName == 'Disconnected') {
+      _status = _status.copyWith(deviceName: initialName);
+    }
+
     _statusSub = _service.statusStream.listen((newStatus) {
-      _status = newStatus;
+      if (!newStatus.isConnected && initialName.isNotEmpty && newStatus.deviceName == 'Disconnected') {
+        _status = newStatus.copyWith(deviceName: initialName);
+      } else {
+        _status = newStatus;
+      }
+
       if (newStatus.isConnected) {
         final currentMac = themeController.lastConnectedMac;
         final targetMac = _connectingMac ?? currentMac;
@@ -73,10 +83,10 @@ class HeadphoneController extends ChangeNotifier {
 
   void _onThemeSettingsChanged() {
     final shouldBeMock = themeController.isMockConnected;
-    // Check if we need to switch services
-    final isMockActive = _service is SimulationHeadphoneService;
-    if (shouldBeMock != isMockActive) {
-      // Clean up old service
+    final isCurrentlyMock = _service is SimulationHeadphoneService;
+
+    if (shouldBeMock != isCurrentlyMock) {
+      _statusSub?.cancel();
       _service.dispose();
 
       _initService();
@@ -84,8 +94,16 @@ class HeadphoneController extends ChangeNotifier {
     }
   }
 
-  Future<void> connect(String macAddress) async {
+  Future<void> connect(String macAddress, [String? deviceName]) async {
     _connectingMac = macAddress;
+    final name = (deviceName != null && deviceName.isNotEmpty)
+        ? deviceName
+        : themeController.getDeviceName(macAddress, '');
+    if (name.isNotEmpty && name.toLowerCase() != 'disconnected') {
+      themeController.saveDeviceName(macAddress, name);
+      themeController.setLastConnectedName(name);
+      _status = _status.copyWith(deviceName: name);
+    }
     await _service.connect(macAddress);
   }
 

@@ -20,18 +20,23 @@ class AndroidHeadphoneService implements HeadphoneService {
   static const int cmdSetDeviceInfo = 8;
   static const int cmdGetDeviceRunInfo = 9;
   static const int cmdReportDeviceStatus = 14;
+  static const int cmdSendDeviceFile = 18;
+
+  static const int ordDevName = 0;
+  static const int ordDevBattery = 2;
 
   static const int ordRunAutoShutdown = 5;
   static const int ordRunAncStatus = 9;
   static const int ordRunGameMode = 11;
-  static const int ordRunMultipoint = 17;
+  static const int ordRunEqMode = 12;
+  static const int ordRunAntiLeak = 15;
   static const int ordRunLdac = 16;
+  static const int ordRunMultipoint = 17;
   static const int ordRunSpatialAudio = 18;
   static const int ordRunSpatialScene = 19;
   static const int ordRunWindNoise = 20;
   static const int ordRunWearDetection = 21;
   static const int ordRunWearState = 22;
-  static const int ordRunEqMode = 12;
 
   static const Map<int, String> ancModes = {
     0: "Normal (Off)",
@@ -61,7 +66,7 @@ class AndroidHeadphoneService implements HeadphoneService {
       _controller.add(_status);
     });
 
-    _eventChannel.receiveBroadcastStream().listen((dynamic event) {
+    _eventChannel.receiveBroadcastStream().listen((event) {
       if (event is Map) {
         final ev = event['event'] as String?;
         final val = event['value'];
@@ -124,16 +129,17 @@ class AndroidHeadphoneService implements HeadphoneService {
   Future<List<BluetoothDevice>> getPairedDevices() async {
     try {
       final granted = await _methodChannel.invokeMethod<bool>('checkPermissions') ?? false;
-      if (!granted) return [];
+      if (!granted) {
+        await _methodChannel.invokeMethod<bool>('requestPermissions');
+      }
 
-      final List<dynamic>? results = await _methodChannel.invokeMethod<List<dynamic>>('getPairedDevices');
-      if (results == null) return [];
-
-      return results.map((d) {
-        final map = Map<String, dynamic>.from(d);
+      final List<dynamic>? list = await _methodChannel.invokeMethod<List<dynamic>>('getPairedDevices');
+      if (list == null) return [];
+      return list.map((item) {
+        final map = Map<String, dynamic>.from(item as Map);
         return BluetoothDevice(
-          macAddress: map['mac'] ?? '',
-          name: map['name'] ?? 'Unknown Device',
+          name: map['name'] as String? ?? 'Unknown',
+          macAddress: map['mac'] as String? ?? '',
         );
       }).toList();
     } catch (_) {
@@ -144,29 +150,36 @@ class AndroidHeadphoneService implements HeadphoneService {
   @override
   Future<List<BluetoothDevice>> scanDevices() async {
     try {
-      // 1. Request permissions if needed
-      final granted = await _methodChannel.invokeMethod<bool>('requestPermissions') ?? false;
+      final granted = await _methodChannel.invokeMethod<bool>('checkPermissions') ?? false;
       if (!granted) {
-        throw Exception('Bluetooth permissions not granted');
+        final req = await _methodChannel.invokeMethod<bool>('requestPermissions') ?? false;
+        if (!req) return await getPairedDevices();
       }
 
-      // 2. Start discovery scan
-      final List<dynamic>? results = await _methodChannel.invokeMethod<List<dynamic>>('startScan');
-      if (results == null) return [];
-
-      return results.map((d) {
-        final map = Map<String, dynamic>.from(d);
+      final List<dynamic>? list = await _methodChannel.invokeMethod<List<dynamic>>('startScan');
+      final scanned = (list ?? []).map((item) {
+        final map = Map<String, dynamic>.from(item as Map);
         return BluetoothDevice(
-          macAddress: map['mac'] ?? '',
-          name: map['name'] ?? 'Unknown Device',
+          name: map['name'] as String? ?? 'Unknown',
+          macAddress: map['mac'] as String? ?? '',
         );
       }).toList();
-    } catch (e) {
-      return getPairedDevices();
+
+      final paired = await getPairedDevices();
+      final seen = <String>{};
+      final combined = <BluetoothDevice>[];
+      for (final d in [...paired, ...scanned]) {
+        if (d.macAddress.isNotEmpty && seen.add(d.macAddress)) {
+          combined.add(d);
+        }
+      }
+      return combined.isNotEmpty ? combined : paired;
+    } catch (_) {
+      return await getPairedDevices();
     }
   }
 
-  // --- Protocol Serialization Helpers ---
+  // --- Protocol Parsing Helpers ---
 
   Uint8List buildPacket(int opCode, int cmdId, int sequenceSn, [Uint8List? payloadData]) {
     final payloadLen = payloadData?.length ?? 0;
@@ -175,10 +188,10 @@ class AndroidHeadphoneService implements HeadphoneService {
     builder.add([0xAA, 0xBB, 0xCC]); // START_PREFIX
     builder.addByte(opCode);
     builder.addByte(cmdId);
-    builder.addByte(totalLen >> 8);
+    builder.addByte((totalLen >> 8) & 0xFF);
     builder.addByte(totalLen & 0xFF);
-    builder.addByte(sequenceSn);
-    if (payloadData != null) {
+    builder.addByte(sequenceSn & 0xFF);
+    if (payloadData != null && payloadData.isNotEmpty) {
       builder.add(payloadData);
     }
     builder.add([0xDD, 0xEE, 0xFF]); // END_SUFFIX
@@ -186,8 +199,9 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   Uint8List buildSettingTlv(int attrId, Uint8List valueBytes) {
+    final length = valueBytes.length + 1;
     final builder = BytesBuilder();
-    builder.addByte(valueBytes.length + 1);
+    builder.addByte(length);
     builder.addByte(attrId);
     builder.add(valueBytes);
     return builder.toBytes();
@@ -195,11 +209,9 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   Map<int, Uint8List> parseTlvBlocks(Uint8List payload, {bool hasStatusByte = false}) {
     var data = payload;
-    if (hasStatusByte) {
-      if (data.length <= 1) return {};
+    if (hasStatusByte && data.isNotEmpty) {
       data = data.sublist(1);
     }
-
     final attrs = <int, Uint8List>{};
     var idx = 0;
     while (idx < data.length) {
@@ -218,11 +230,9 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   Map<int, Uint8List> parseConfigBlocks(Uint8List payload, {bool hasStatusByte = false}) {
     var data = payload;
-    if (hasStatusByte) {
-      if (data.length <= 1) return {};
+    if (hasStatusByte && data.isNotEmpty) {
       data = data.sublist(1);
     }
-
     final configs = <int, Uint8List>{};
     var idx = 0;
     while (idx < data.length) {
@@ -251,25 +261,25 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   Future<void> _writeSetting(int attrId, int val) async {
     final tlv = buildSettingTlv(attrId, Uint8List.fromList([val]));
-    await _writePacket(opWrite, cmdSetDeviceInfo, tlv);
+    await _writePacket(opRead, cmdSetDeviceInfo, tlv);
     await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
 
   Future<void> _queryStatus() async {
-    // 1. Query name (Command 2, Attribute 0 - mask 1)
+    // 1. Query name (Command 2, MASK_QUERY_NAME = 1)
     final nameMask = Uint8List(4).. [3] = 1;
     await _writePacket(opRead, cmdGetDeviceInfo, nameMask);
     await Future.delayed(const Duration(milliseconds: 150));
 
-    // 2. Query battery (Command 2, Attribute 2 - mask 4)
+    // 2. Query battery (Command 2, MASK_QUERY_BATTERY = 4)
     final batMask = Uint8List(4).. [3] = 4;
     await _writePacket(opRead, cmdGetDeviceInfo, batMask);
     await Future.delayed(const Duration(milliseconds: 150));
 
-    // 3. Query run info (Command 9, combined mask)
+    // 3. Query run info (Command 9, combined mask 8362528 = 0x7F9A20)
     final maskBytes = Uint8List(4);
-    const combinedMask = 8329760; // 0x7F1A20 (includes ANC, Game, Multipoint, Wind, Wear, EQ, Shutdown, Spatial)
+    const combinedMask = 8362528; // 0x7F9A20 (ANC, Game, EQ, Anti-leak, LDAC, Multipoint, Spatial Audio, Spatial Scene, Wind Noise, Wear Det, Wear State, Auto-shutdown)
     maskBytes[0] = (combinedMask >> 24) & 0xFF;
     maskBytes[1] = (combinedMask >> 16) & 0xFF;
     maskBytes[2] = (combinedMask >> 8) & 0xFF;
@@ -322,32 +332,34 @@ class AndroidHeadphoneService implements HeadphoneService {
 
       final opCode = _rxBuffer[3];
       final cmdId = _rxBuffer[4];
-      final length = (_rxBuffer[5] << 8) | _rxBuffer[6];
-      final expectedLength = 7 + length + 3;
+      final totalLen = (_rxBuffer[5] << 8) | _rxBuffer[6];
+      final expectedLength = 7 + totalLen + 3;
 
       if (_rxBuffer.length < expectedLength) {
         break;
       }
 
-      final packetBytes = _rxBuffer.sublist(0, expectedLength);
-      final suffixStart = expectedLength - 3;
+      final isSuffixValid = _rxBuffer[expectedLength - 3] == endSuffix[0] &&
+          _rxBuffer[expectedLength - 2] == endSuffix[1] &&
+          _rxBuffer[expectedLength - 1] == endSuffix[2];
 
-      if (packetBytes[suffixStart] == endSuffix[0] &&
-          packetBytes[suffixStart + 1] == endSuffix[1] &&
-          packetBytes[suffixStart + 2] == endSuffix[2]) {
-
-        final seqSn = packetBytes[7];
-        final payload = Uint8List.fromList(packetBytes.sublist(8, suffixStart));
-
-        _processPacket(opCode, cmdId, seqSn, payload);
-        _rxBuffer.removeRange(0, expectedLength);
-      } else {
-        _rxBuffer.removeRange(0, 3);
+      if (!isSuffixValid) {
+        _rxBuffer.removeAt(0);
+        continue;
       }
+
+      // Payload starts after sequence number (index 8) and ends before suffix
+      final payloadLen = totalLen > 0 ? totalLen - 1 : 0;
+      final payload = payloadLen > 0
+          ? Uint8List.fromList(_rxBuffer.sublist(8, 8 + payloadLen))
+          : Uint8List(0);
+      _rxBuffer.removeRange(0, expectedLength);
+
+      _processIncomingPacket(opCode, cmdId, payload);
     }
   }
 
-  void _processPacket(int opCode, int cmdId, int seqSn, Uint8List payload) {
+  void _processIncomingPacket(int opCode, int cmdId, Uint8List payload) {
     final hasStatus = (opCode & 0x40) == 0;
 
     if (cmdId == cmdGetDeviceRunInfo || cmdId == cmdReportDeviceStatus) {
@@ -407,6 +419,9 @@ class AndroidHeadphoneService implements HeadphoneService {
     if (attrs.containsKey(ordRunWearDetection)) {
       updated = updated.copyWith(wearDetection: attrs[ordRunWearDetection]![0] == 1);
     }
+    if (attrs.containsKey(ordRunAntiLeak)) {
+      updated = updated.copyWith(antiLeak: attrs[ordRunAntiLeak]![0] == 1);
+    }
     if (attrs.containsKey(ordRunAutoShutdown)) {
       final val = attrs[ordRunAutoShutdown]![0];
       int? shutdownIdx;
@@ -453,14 +468,32 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   void _updateDeviceInfoFromAttrs(Map<int, Uint8List> attrs) {
     var updated = _status;
-    if (attrs.containsKey(0)) {
-      final nameBytes = attrs[0]!;
-      updated = updated.copyWith(deviceName: utf8.decode(nameBytes, allowMalformed: true));
+    if (attrs.containsKey(ordDevName)) {
+      final nameBytes = attrs[ordDevName]!;
+      final name = utf8.decode(nameBytes, allowMalformed: true).replaceAll('\x00', '').trim();
+      if (name.isNotEmpty) {
+        updated = updated.copyWith(deviceName: name);
+      }
     }
-    if (attrs.containsKey(2)) {
-      final batBytes = attrs[2]!;
-      if (batBytes.isNotEmpty) {
-        updated = updated.copyWith(batteryPercent: batBytes[0]);
+    if (attrs.containsKey(ordDevBattery)) {
+      final batBytes = attrs[ordDevBattery]!;
+      if (batBytes.length == 1) {
+        updated = updated.copyWith(
+          batteryPercent: batBytes[0],
+          batteryLeft: null,
+          batteryRight: null,
+          batteryCase: null,
+        );
+      } else if (batBytes.length >= 2) {
+        final bLeft = batBytes[0];
+        final bRight = batBytes[1];
+        final bCase = batBytes.length >= 3 ? batBytes[2] : null;
+        updated = updated.copyWith(
+          batteryPercent: bLeft,
+          batteryLeft: bLeft,
+          batteryRight: bRight,
+          batteryCase: bCase,
+        );
       }
     }
     _updateStatus(updated);
@@ -507,19 +540,20 @@ class AndroidHeadphoneService implements HeadphoneService {
   }
 
   @override
+  Future<void> setAntiLeak(bool enabled) async {
+    await _writeSetting(7, enabled ? 1 : 0);
+  }
+
+  @override
   Future<void> setAutoShutdown(int timerVal) async {
     await _writeSetting(0, timerVal);
   }
 
   @override
   Future<void> setSpatialAudio(String mode) async {
-    int val;
-    switch (mode) {
-      case 'Dynamic': val = 0; break;
-      case 'Static': val = 1; break;
-      case 'Off':
-      default: val = 2; break;
-    }
+    int val = 2; // Off
+    if (mode == 'Dynamic') val = 0;
+    if (mode == 'Static') val = 1;
     await _writeSetting(10, val);
   }
 
@@ -530,32 +564,21 @@ class AndroidHeadphoneService implements HeadphoneService {
 
   @override
   Future<void> setEqPreset(int presetIdx) async {
-    int writeVal;
-    String presetName;
-    switch (presetIdx) {
-      case 0: writeVal = 0; presetName = 'Default'; break;
-      case 1: writeVal = 6; presetName = 'Subwoofer'; break;
-      case 2: writeVal = 2; presetName = 'Rock'; break;
-      case 3: writeVal = 7; presetName = 'Soft'; break;
-      case 4: writeVal = 3; presetName = 'Classical'; break;
-      case 15:
-      case 240: writeVal = 240; presetName = 'Custom/Customize'; break;
-      default: writeVal = presetIdx; presetName = eqPresets[presetIdx] ?? 'Default';
-    }
-    _updateStatus(_status.copyWith(eqPreset: presetName));
-    // S40 EQ preset uses config ID 7 (opcode 242, opRead)
-    await _writePacket(opRead, 242, Uint8List.fromList([3, 0, 7, writeVal]));
+    final isS40 = _status.eqType == 's40';
+    final writeVal = isS40 ? (const {0: 0, 1: 6, 2: 2, 3: 7, 4: 3}[presetIdx] ?? presetIdx) : presetIdx;
+    await _writeSetting(2, writeVal);
+    // Also send Config 7
+    final cfgPayload = Uint8List.fromList([3, 0, 7, writeVal]);
+    await _writePacket(opRead, 242, cfgPayload);
     await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
 
   @override
   Future<void> setCustomEq(List<double> gains) async {
-    _updateStatus(_status.copyWith(eqPreset: 'Custom/Customize'));
-
     const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
     final items = <String>[];
-    for (int i = 0; i < frequencies.length; i++) {
+    for (var i = 0; i < frequencies.length; i++) {
       final g = i < gains.length ? gains[i] : 0.0;
       items.add('1,${g.toStringAsFixed(1)},${frequencies[i]},1.0');
     }
@@ -564,47 +587,44 @@ class AndroidHeadphoneService implements HeadphoneService {
     final fileBytes = utf8.encode(eqFileStr);
     final fileLen = fileBytes.length;
 
-    final paramsData = BytesBuilder();
-    paramsData.addByte((fileLen >> 8) & 0xFF);
-    paramsData.addByte(fileLen & 0xFF);
-    paramsData.addByte(0x01);
-    paramsData.add(fileBytes);
+    final paramsData = Uint8List(3 + fileLen);
+    paramsData[0] = (fileLen >> 8) & 0xFF;
+    paramsData[1] = fileLen & 0xFF;
+    paramsData[2] = 0x01; // file type EQ
+    paramsData.setRange(3, 3 + fileLen, fileBytes);
 
-    // Opcode 18 (BtSendFile2DevRequest), write
-    await _writePacket(opWrite, 18, paramsData.toBytes());
+    await _writePacket(opWrite, cmdSendDeviceFile, paramsData);
     await Future.delayed(const Duration(milliseconds: 150));
-
-    // Activate CUSTOMIZE preset (Config ID 7 -> 240 / 0xF0)
     await setEqPreset(240);
   }
 
   @override
+  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {
+    final payload = Uint8List.fromList([5, 0, 2, gestureType, leftFunc, rightFunc]);
+    await _writePacket(opRead, 242, payload);
+    await Future.delayed(const Duration(milliseconds: 150));
+    await _queryStatus();
+  }
+
+  @override
   Future<void> renameDevice(String newName) async {
-    final nameBytes = utf8.encode(newName);
-    final payload = BytesBuilder();
-    payload.addByte(nameBytes.length + 2);
-    payload.addByte(0);
-    payload.addByte(8);
-    payload.add(nameBytes);
-    await _writePacket(opWrite, 242, payload.toBytes());
+    var nameBytes = utf8.encode(newName);
+    if (nameBytes.length > 30) nameBytes = nameBytes.sublist(0, 30);
+    final payload = Uint8List(nameBytes.length + 3);
+    payload[0] = nameBytes.length + 2;
+    payload[1] = 0;
+    payload[2] = 8;
+    payload.setRange(3, 3 + nameBytes.length, nameBytes);
+    await _writePacket(opRead, 242, payload);
+    await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
 
   @override
   Future<void> findDevice(bool play) async {
-    // Config ID 9 (opcode 242, opRead): payload is [length=4, config_id_hi=0, config_id_lo=9, play (1 or 0), earbud_id (3=both)]
-    await _writePacket(opRead, 242, Uint8List.fromList([4, 0, 9, play ? 1 : 0, 3]));
-  }
-
-  @override
-  Future<void> setAntiLeak(bool enabled) async {
-    _updateStatus(_status.copyWith(antiLeak: enabled));
-    await _writeSetting(7, enabled ? 1 : 0);
-  }
-
-  @override
-  Future<void> setGesture(int gestureType, int leftFunc, int rightFunc) async {
-    await _writePacket(opRead, 242, Uint8List.fromList([5, 0, 2, gestureType, leftFunc, rightFunc]));
+    final payload = Uint8List.fromList([4, 0, 9, play ? 1 : 0, 3]);
+    await _writePacket(opRead, 242, payload);
+    await Future.delayed(const Duration(milliseconds: 150));
     await _queryStatus();
   }
 

@@ -35,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isConnected => widget.headphoneController.isConnected;
   bool get _isConnecting => widget.headphoneController.isConnecting;
   String get _deviceName => widget.headphoneController.deviceName;
-  bool get _isOverEar => !_status.isTws;
   int get _batteryPercent => widget.headphoneController.batteryPercent;
 
   // Optimistic UI state overrides and in-flight lock tracking
@@ -1218,14 +1217,15 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, constraints) {
         final is2Pane = constraints.maxWidth >= 720;
         final status = widget.headphoneController.status;
-        final isWearSupported = !_isOverEar && status.wearDetection != null;
+        final isWearSupported = status.hasWearDetection && status.wearDetection != null;
         final hasAudioFeatures = !_isConnected ||
             status.gameMode != null ||
-            status.windNoise != null ||
+            (status.hasAnc && status.windNoise != null) ||
             status.multipoint != null ||
-            status.ldac != null ||
+            status.hasLdac ||
             isWearSupported ||
-            status.spatialAudioMode != 'Unknown';
+            status.hasAntiLeak ||
+            status.hasSpatialAudio;
 
         final actions = [
           if (!_isConnected)
@@ -2821,7 +2821,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Game Mode
-    if (!_isConnected || status.gameMode != null) {
+    if (status.gameMode != null || !_isConnected) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.sports_esports),
@@ -2833,7 +2833,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Wind Noise Reduction
-    if (!_isConnected || (status.hasAnc && status.windNoise != null)) {
+    if (status.hasAnc && (status.windNoise != null || !_isConnected)) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.air),
@@ -2845,7 +2845,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Multipoint Connection
-    if (!_isConnected || status.multipoint != null) {
+    if (status.multipoint != null || !_isConnected) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.link),
@@ -2857,7 +2857,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // LDAC High-Resolution Audio
-    if (!_isConnected || status.hasLdac) {
+    if (status.hasLdac) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.high_quality),
@@ -2869,7 +2869,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Smart Wear Detection
-    if (!_isConnected || status.hasWearDetection) {
+    if (status.hasWearDetection) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.hearing),
@@ -2881,7 +2881,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Anti-Sound Leak (BC04 Purfree Lite)
-    if (_isConnected && status.hasAntiLeak) {
+    if (status.hasAntiLeak) {
       addDividerIfNotEmpty();
       children.add(SwitchListTile(
         secondary: const Icon(Icons.volume_off),
@@ -2893,7 +2893,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Spatial Audio (S40)
-    if (!_isConnected || status.hasSpatialAudio) {
+    if (status.hasSpatialAudio) {
       addDividerIfNotEmpty();
       children.add(_buildSpatialAudioTile(theme));
     }
@@ -3273,7 +3273,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
     try {
       // First get immediately cached/paired devices so the user doesn't see an empty screen
       final cached = await widget.headphoneController.getPairedDevices();
-      if (mounted) {
+      if (mounted && cached.isNotEmpty) {
         setState(() {
           _devices = cached;
         });
@@ -3283,14 +3283,25 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
       final fresh = await widget.headphoneController.scanDevices();
       if (mounted) {
         setState(() {
-          _devices = fresh;
+          if (fresh.isNotEmpty) {
+            final seenMacs = <String>{};
+            final merged = <BluetoothDevice>[];
+            for (final d in [..._devices, ...fresh]) {
+              if (d.macAddress.isNotEmpty && seenMacs.add(d.macAddress)) {
+                merged.add(d);
+              }
+            }
+            _devices = merged;
+          }
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
+          if (_devices.isEmpty) {
+            _error = e.toString();
+          }
           _isLoading = false;
         });
       }
@@ -3378,7 +3389,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                             subtitle: Text(dev.macAddress),
                             onTap: () {
                               Navigator.pop(context);
-                              widget.headphoneController.connect(dev.macAddress);
+                              widget.headphoneController.connect(dev.macAddress, dev.name);
                             },
                           )),
                           const Divider(),
@@ -3400,7 +3411,7 @@ class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog> {
                             subtitle: Text(dev.macAddress),
                             onTap: () {
                               Navigator.pop(context);
-                              widget.headphoneController.connect(dev.macAddress);
+                              widget.headphoneController.connect(dev.macAddress, dev.name);
                             },
                           )),
                         ],
